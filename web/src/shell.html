@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="light" data-motion="full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#F6F0E4">
+<meta name="color-scheme" content="light dark">
+<title>OC Shimeji｜我的夥伴小島</title>
+<script>
+/* 提早套用主題，避免啟動閃一下 */
+(function(){try{var s=JSON.parse(localStorage.getItem('ocs4.save')||'{}').settings||{};var t=s.theme||'system';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.dataset.theme=d?'dark':'light';var m=s.motion||'system';r.dataset.motion=(m==='reduce'||(m==='system'&&matchMedia('(prefers-reduced-motion: reduce)').matches))?'reduce':'full'}catch(e){}})();
+</script>
+<!--STYLE-->
+</head>
+<body>
+<div id="app">
+  <canvas id="world" aria-label="小島"></canvas>
+  <div id="hud"></div>
+  <div id="qbag"></div>
+  <main id="page" class="page"></main>
+  <nav id="nav" aria-label="主要導覽"></nav>
+  <div id="layer"></div>
+  <div id="coach" class="coach"></div>
+  <div id="intro" class="intro" hidden></div>
+  <div id="celebrate"></div>
+  <div id="toasts"></div>
+  <div id="fade"></div>
+  <div id="dghost"></div>
+  <div id="splash"><b>OC SHIMEJI</b></div>
+</div>
+<input type="file" id="fileIn">
+<!--SCRIPTS-->
+<script>
+window.addEventListener('error',e=>{console.error('[oc]',e.message)});
+OC.boot().catch(e=>{console.error(e);var s=document.getElementById('splash');if(s)s.innerHTML='<b style="font-size:15px;letter-spacing:0">啟動失敗：'+String(e&&e.message||e)+'</b>'});
+</script>
+</body>
+</html>
