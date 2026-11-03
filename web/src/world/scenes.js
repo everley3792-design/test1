@@ -128,12 +128,18 @@ const Scenes={cache:{},get(id){return this.cache[id]||(this.cache[id]=({home,pla
   const b=sc.blocked;sc.blocked=(x,z,ign)=>{for(const o of sc.objs)if(o.box&&o!==ign&&x>o.x+o.box[0]&&x<o.x+o.box[2]&&z>o.z+o.box[1]&&z<o.z+o.box[3])return o;return b(x,z,ign)};
   sc.ok=(x,z,ign)=>sc.walk(x,z)&&!sc.blocked(x,z,ign)},
  /* 屋內家具 */
- syncFurn(){const sc=this.get('house'),F=OC.S.world.houseFurn||[];sc.objs=F.map(f=>S('furn',f.x,f.z,{k:f.k,id:f.id,r:FR[f.k]??.6,flat:f.k==='rug',act:FA[f.k],name:FN[f.k],seat:['sofa','bed','table'].includes(f.k)?1:0,light:f.k==='lamp'?2:0}))},
+ syncFurn(){const sc=this.get('house'),F=OC.S.world.houseFurn||[];
+  sc.objs=F.map(f=>{if(String(f.k).startsWith('cr')){const c=OC.Creations&&OC.Creations.get(f.k);if(!c)return null;const U2={seat:['sofa',1],bed:['sleep',1],table:['eat',1],light:[null,0],shelf:['read',0],decor:[null,0]}[c.use||'decor']||[null,0];
+    return S('cfurn',f.x,f.z,{k:f.k,cid:f.k,id:f.id,r:(c.size||1)*.42,act:U2[0],seat:U2[1],name:c.name,light:c.use==='light'?2:0,creation:1})}
+   return S('furn',f.x,f.z,{k:f.k,id:f.id,r:FR[f.k]??.6,flat:f.k==='rug',act:FA[f.k],name:FN[f.k],seat:['sofa','bed','table','chair'].includes(f.k)?1:0,light:['lamp','lantern','fireplace'].includes(f.k)?2:0})}).filter(Boolean);
+  /* 屋內的門：玩家與夥伴都從這裡出去 */
+  sc.objs.push(S('rdoor',-2.7,-2.62,{r:0,act:'exit',name:'出門',zb:-.5}))},
+ syncBuilds(){const sc=this.get('home');sc.objs=sc.objs.filter(o=>o.type!=='cbuild');for(const b of (OC.S.world.builds||[])){const c=OC.Creations&&OC.Creations.get(b.cid);if(!c)continue;sc.objs.push(S('cbuild',b.x,b.z,{cid:b.cid,id:b.id,r:(c.size||3)*.38,name:c.name,creation:1}))}OC.R&&OC.R.invalidate&&OC.R.invalidate()},
  canPlaceHouse(x,z){const sc=this.get('home');if(!sc.houseZone(x,z)||!sc.houseZone(x-1.6,z)||!sc.houseZone(x+1.6,z)||!sc.houseZone(x-1.4,z-2)||!sc.houseZone(x+1.4,z-2))return false;
   for(const o of sc.objs){if(o.type==='house'||o.deco)continue;if(o.x>x-2.4&&o.x<x+2.4&&o.z>z-3&&o.z<z+1.2)return false}
   for(const p of sc.ponds)if(inside(p.pts,x,z)||inside(p.pts,x+1.5,z))return false;return true}};
-const FR={bed:.9,table:.75,kitchen:.8,shelf:.6,lamp:.25,plant:.3,rug:0,sofa:.85,radio:.35,bath:.7};
-const FA={bed:'sleep',table:'eat',kitchen:'cook',shelf:'read',sofa:'sofa',radio:'music',bath:'bathe',plant:'water',lamp:null,rug:null};
-const FN={bed:'床',table:'餐桌',kitchen:'廚房',shelf:'書櫃',sofa:'沙發',radio:'收音機',bath:'浴桶',plant:'植物',lamp:'立燈',rug:'地毯'};
+const FR={bed:.9,table:.75,kitchen:.8,shelf:.6,lamp:.25,plant:.3,rug:0,sofa:.85,radio:.35,bath:.7,chair:.35,wardrobe:.6,desk:.6,fireplace:.7,clock:.3,bowl:.35,piano:.8,lantern:.2,flowerbed:.5};
+const FA={bed:'sleep',table:'eat',kitchen:'cook',shelf:'read',sofa:'sofa',radio:'music',bath:'bathe',plant:'water',lamp:null,rug:null,chair:'sofa',desk:'read',piano:'music',fireplace:'campfire',bowl:null,clock:null,wardrobe:null,lantern:null,flowerbed:null};
+const FN={bed:'床',table:'餐桌',kitchen:'廚房',shelf:'書櫃',sofa:'沙發',radio:'收音機',bath:'浴桶',plant:'植物',lamp:'立燈',rug:'地毯',chair:'木椅',wardrobe:'衣櫃',desk:'書桌',fireplace:'壁爐',clock:'落地鐘',bowl:'金魚缸',piano:'小鋼琴',lantern:'提燈',flowerbed:'花箱'};
 OC.Scenes=Scenes;
 })(window.OC);

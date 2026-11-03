@@ -59,7 +59,7 @@ const Social={LBL,
    const m=c.memories.find(m=>m.with&&m.with.includes(d.id)&&m.val>0);if(m)return`還記得我們${m.text}嗎？`;const it=(d.profile.interests||[])[0];return it?`最近${it}怎麼樣？`:U.pick(L.chatTopic.time[Env.tod()])};
   const gain=(n,o)=>act(()=>{this.change(a,b,n,o);c.needs.social=Math.min(100,c.needs.social+12);d.needs.social=Math.min(100,d.needs.social+12);OC.Sim.skill(c,'social',.5);c.counters._chat=(c.counters._chat||0)+1;OC.Sim.checkWish(a,'talk',d.id);OC.Sim.checkWish(b,'talk',c.id)},.2);
   switch(k){
-   case'greet':{const g={wave:'揮揮手',bow:'鞠躬',hop:'跳起來',hug:'抱抱',nod:'點點頭',peek:'偷看'}[c.quirks.greet];r.greet=U.dayKey();
+   case'greet':{if(OC.Events)setTimeout(()=>{OC.Events.fire(a,{meet:b.id})||OC.Events.fire(b,{meet:a.id})},2600);const g={wave:'揮揮手',bow:'鞠躬',hop:'跳起來',hug:'抱抱',nod:'點點頭',peek:'偷看'}[c.quirks.greet];r.greet=U.dayKey();
     act(()=>{if(c.quirks.greet==='hop')a.hop(2);else if(c.quirks.greet==='bow')a.squash(.85);else if(c.quirks.greet==='hug'){a.feel('heart')}else if(c.quirks.greet==='peek'){a.face='soft'}},.3);
     say(a,U.pick(L.greet)+(Chars.has(c,'polite')?' 今天也請多指教。':''));say(b,Chars.has(d,'shy')?'啊…你、你好。':U.pick(L.greet),{emo:Chars.has(d,'shy')?'blush':null});gain(2);break}
    case'chat':{if(OC.S.settings.negEvents!==false&&(Chars.has(d,'sensitive')||Chars.has(d,'moody')||Chars.has(d,'tsun'))&&Math.random()<.07){say(a,pickTopic());say(b,'……你是在說我嗎？',{tone:'angry',emo:'anger'});act(()=>{b.face='angry';d.emo.anger=Math.min(1,d.emo.anger+.3);this.change(a,b,-3,{conf:10});OC.Sim.remember(d,'misunderstand',`誤會了${c.name}的話`,-.3,[c.id])},.3);say(a,'欸？我不是那個意思啦…',{emo:'sweat'});break}

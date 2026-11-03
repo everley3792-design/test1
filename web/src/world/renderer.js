@@ -210,10 +210,11 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   if(o.type==='house'&&this.perf.ambient&&Math.random()<.035){Fx.smoke(o.x+.95,3.3,o.z-1.2)}
   if(o.type==='fountain'&&this.perf.ambient){const top=cam.p(o.x,1.45,o.z);ctx.fillStyle='rgba(225,245,255,.8)';for(let i=0;i<6;i++){const ph=(t*1.2+i/6)%1;const a=i/6*TAU;const xx=top.x+Math.cos(a)*ph*s*.55,yy=top.y-Math.sin(ph*Math.PI)*s*.4+ph*s*.7;ctx.globalAlpha=1-ph;ctx.beginPath();ctx.arc(xx,yy,s*.03,0,TAU);ctx.fill()}ctx.globalAlpha=1}},
  fireOn(o){return Env.isNight()||Env.phase==='dusk'||Env.phase==='dawn'||o.lit},
- spriteOf(o){if(o._spr&&o._sv===o.style)return o._spr;let s=null;
+ spriteOf(o){if(o._spr&&o._sv===o.style)return o._spr;if(o.type==='cfurn'||o.type==='cbuild'){const k=OC.Creations.imgs.get(o.cid);if(o._spr&&o._sk===k)return o._spr;o._sk=k}let s=null;
   switch(o.type){case'tree':s=SP.tree(o.kind,o.col,o.v);break;case'bush':s=SP.bush(o.col,o.fl,o.v);break;case'rock':s=SP.rock(o.size,o.v);break;case'flowers':s=SP.flowers(o.cols||['#FFF'],o.v);break;case'tuft':s=SP.tuft(o.col||(this.sc.id==='forest'?'#5C9A4C':'#6FAE5A'),o.v);break;
    case'house':s=SP.house(o.style);break;case'shop':s=SP.PROPS.shop(o.c,o.name,o.awn);break;case'stall':s=SP.PROPS.stall(o.c);break;case'furn':s=SP.FURN[o.k]&&SP.FURN[o.k]();break;
-   case'bridge':s=SP.PROPS.bridge();break;default:s=SP.PROPS[o.type]&&SP.PROPS[o.type]()}
+   case'bridge':s=SP.PROPS.bridge();break;case'rdoor':s=SP.PROPS.rdoor();break;
+   case'cfurn':case'cbuild':{const c=OC.Creations.get(o.cid);const src=OC.Creations.imgs.get(o.cid);s=c&&src?SP.fromImg('cr:'+o.cid+':'+src.length,src,c.size||(o.type==='cbuild'?3:1.2)):null;if(!s)return null;break}default:s=SP.PROPS[o.type]&&SP.PROPS[o.type]()}
   o._spr=s;o._sv=o.style;return s},
  drawActor(ctx,a,dt){const cam=this.cam;const q=cam.p(a.x,(a.gy||0)+(a.y||0),a.z);if(q.d<.5)return;const s=q.s;a.sx=q.x;a.sy=q.y;a.ss=s;
   OC.Rig.draw(ctx,a,q.x,q.y,s,dt)},
@@ -266,7 +267,8 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   else if(showNames&&(a.focus||a.nameT>0)){const al=a.focus?1:Math.min(1,a.nameT);ctx.globalAlpha=al*.92;const txt=c.name;ctx.font='600 11px "Nunito","Noto Sans TC",sans-serif';const w=ctx.measureText(txt).width+14;
    const y=a.sy+8;rrect(ctx,a.sx-w/2,y,w,18,9);ctx.fillStyle='rgba(255,252,244,.92)';ctx.fill();ctx.fillStyle='#5B4B45';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,a.sx,y+9.5);ctx.textAlign='start';ctx.textBaseline='alphabetic';ctx.globalAlpha=1}}
   /* 地點提示環（佈置、放置房子） */
-  if(this.ghost)this.ghost(ctx)}};
+  if(this.ghost)this.ghost(ctx);
+  if(OC.Cine)OC.Cine.draw(ctx,this.W,this.H)}};
 
 /* ---------- 小工具 ---------- */
 function polyArea(p){let a=0;for(let i=0,j=p.length-1;i<p.length;j=i++)a+=(p[j][0]+p[i][0])*(p[j][1]-p[i][1]);return a}
@@ -290,6 +292,7 @@ function drawEmote(ctx,a,x,y,s,t){const e=a.emote;const k=Math.min(1,e.t/.25),po
   case'gloom':ctx.strokeStyle='#7F8EB2';ctx.lineWidth=Math.max(1,sz*.12);for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(x-sz*.5+i*sz*.5,y-sz*.6);ctx.lineTo(x-sz*.5+i*sz*.5,y+sz*.2);ctx.stroke()}break;
   case'sick':ctx.fillStyle='#9DB07A';ctx.beginPath();for(let i=0;i<3;i++){ctx.moveTo(x+i*sz*.4,y);ctx.arc(x+i*sz*.4-sz*.2,y-i*sz*.3+bob,sz*.18,0,TAU)}ctx.fill();break;
   case'idea':ctx.fillStyle='#FFD86B';ctx.beginPath();ctx.arc(x,y+bob,sz*.55,0,TAU);ctx.fill();ctx.fillStyle='#D9B24A';ctx.fillRect(x-sz*.22,y+bob+sz*.45,sz*.44,sz*.3);break;
+  case'dizzy':{const cx=x-s*.34,cy=y+s*.05;for(let i=0;i<3;i++){const an=t*4+i*2.09,px=cx+Math.cos(an)*s*.32,py=cy+Math.sin(an)*s*.09;ctx.globalAlpha=fade*(.6+.4*Math.sin(an));ctx.fillStyle=i%2?'#FFD36E':'#FFF2B0';star4(ctx,px,py,s*.075)}ctx.globalAlpha=1;break}
   case'blush':ctx.fillStyle='rgba(242,124,155,.85)';for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(x-sz*.3+i*sz*.3,y+bob,sz*.08,sz*.3,.4,0,TAU);ctx.fill()}break}
  ctx.globalAlpha=1}
 function wrap(ctx,txt,maxW){const out=[];let line='';for(const ch of [...txt]){const tt=line+ch;if(ctx.measureText(tt).width>maxW&&line){out.push(line);line=ch}else line=tt}if(line)out.push(line);return out.slice(0,3)}

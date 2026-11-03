@@ -2,7 +2,7 @@
 import fs from 'node:fs';import path from 'node:path';
 const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
 const src=p=>path.join(root,'web/src',p);
-export const ORDER=['core/util.js','art/cat-svg.js','sim/legacy-data.js','sim/content.js','core/store.js','sim/chars.js','world/env.js','art/sprites.js','world/scenes.js','world/renderer.js','art/rig.js','sim/actions.js','sim/sim.js','sim/social.js','game/quests.js','game/play.js','core/native.js','ui/ui.js','ui/pages.js','ui/editor.js','ui/intro.js','core/main.js'];
+export const ORDER=['core/util.js','art/icons.js','art/cat-svg.js','sim/legacy-data.js','sim/content.js','core/store.js','sim/chars.js','world/env.js','art/sprites.js','world/scenes.js','world/renderer.js','art/rig.js','sim/actions.js','sim/sim.js','sim/social.js','game/quests.js','game/play.js','game/cine.js','game/creations.js','core/native.js','ui/ui.js','ui/bag.js','ui/shop.js','ui/pages.js','ui/editor.js','ui/studio.js','ui/workshop.js','ui/deco.js','ui/intro.js','core/main.js'];
 const shell=fs.readFileSync(src('shell.html'),'utf8');
 const css=fs.readFileSync(src('style.css'),'utf8');
 const js=ORDER.map(f=>`<script data-src="${f}">\n${fs.readFileSync(src(f),'utf8').replace(/<\/script/gi,'<\\/script')}\n</script>`).join('\n');

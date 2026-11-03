@@ -57,8 +57,11 @@ const Rig={RS,
   const spd=Math.hypot(a.vx||0,a.vz||0);const moving=spd>.05&&(st==='walk'||st==='run');
   const cad=st==='run'?3.1:Q.walk==='tiptoe'?3:Q.walk==='shuffle'?1.6:2.2;
   if(moving)A.step+=dt*Math.PI*2*cad*U.clamp(spd/(st==='run'?2.6:1.1),.6,1.5);else A.step=U.approach(A.step,Math.round(A.step/Math.PI)*Math.PI,10,dt);
-  /* 轉身：彈簧追向朝向（穿過 0 時有輕微擠壓） */
-  U.spring(A.flip,a.facing||1,dt,260,.82);
+  /* 轉身：0.2 秒的緩動半轉（cos 曲線），配合小跳躍與身體擠壓，視覺上是「轉過去」而不是紙片翻面 */
+  const want=a.facing||1;if(A.f0==null)A.f0=want;
+  if(want!==A.f0&&!A.turn)A.turn={t:0,from:A.f0,to:want};
+  if(A.turn){A.turn.t+=dt;const u=Math.min(1,A.turn.t/.2);A.flip.x=A.turn.from*Math.cos(Math.PI*U.ease.inOut(u));A.turnK=Math.sin(Math.PI*u);if(u>=1){A.f0=A.turn.to;A.flip.x=A.turn.to;A.turn=null;A.turnK=0;if(want!==A.f0)A.turn={t:0,from:A.f0,to:want}}}
+  else{A.flip.x=A.f0;A.turnK=0}
   /* 擠壓伸展：外部觸發 a.squash(v) */
   U.spring(A.sq,1,dt,200,.38);
   /* 視線：偶爾左右看看 */
@@ -79,7 +82,9 @@ const Rig={RS,
    case'cheer':hyT=-4;tailAmp=24;tailSpd=5;break;
    case'talk':hyT+=Math.max(0,Math.sin(A.t*7))*2;tailAmp=12;tailSpd=2;break;
    case'look':htT=a.lookAt!=null?a.lookAt*10:Math.sin(A.t*.8)*10;break;
-   case'stretch':hyT=-6;htT=-6;tailBase=20;tailAmp=4;break}
+   case'stretch':hyT=-6;htT=-6;tailBase=20;tailAmp=4;break;
+   case'fall':hyT=-7;tailAmp=26;tailSpd=6;htT=Math.sin(A.t*9)*6;break;
+   case'dizzy':hyT=4+Math.sin(A.t*3)*2;htT=Math.sin(A.t*4.2)*12;hxT=Math.sin(A.t*2.1)*6;tailAmp=8;tailSpd=1.4;tailBase=-12;break}
   if(a.sick){tailBase-=10;tailAmp*=.5;hyT+=3}
   if(a.mood==='happy'||a.mood==='excited'||a.mood==='loved'){tailAmp*=1.25;tailSpd*=1.25}
   U.spring(A.hy,hyT,dt,140,.55);U.spring(A.hx,hxT,dt,90,.7);U.spring(A.ht,htT,dt,110,.6);U.spring(A.lean,leanT,dt,80,.75);
@@ -91,7 +96,7 @@ const Rig={RS,
   if(A.blink>0&&!['wow','joy'].includes(a.face))return'blink';
   if(A.talkT>0&&Math.sin(A.talkT*20)>0)return a.face==='joy'?'joyTalk':'talk';
   if(a.face)return a.face;
-  if(st==='pet')return'joy';if(st==='held')return'wow';if(st==='angry'||a.mood==='angry')return'angry';if(a.sick||a.mood==='sad')return'worry';if(a.mood==='happy'||a.mood==='loved')return Math.sin(A.t*.3)>.6?'soft':'neutral';return'neutral'},
+  if(st==='pet')return'joy';if(st==='held'||st==='fall')return'wow';if(st==='dizzy')return'neutral';if(st==='angry'||a.mood==='angry')return'angry';if(a.sick||a.mood==='sad')return'worry';if(a.mood==='happy'||a.mood==='loved')return Math.sin(A.t*.3)>.6?'soft':'neutral';return'neutral'},
 
  /* =========== 繪製 =========== */
  draw(ctx,a,sx,sy,s,dt){const r=this.get(a.c);const A=this.anim(a,dt);const scale=(a.c.scale||1)*(a.sizeK||1);
@@ -100,13 +105,14 @@ const Rig={RS,
   const brk=Math.sin(A.br)*(a.pose==='sleep'?.03:.015);
   const sq=A.sq.x;let sxk=1/Math.sqrt(Math.max(.4,sq)),syk=sq;
   if(a.pose==='sleep'){sxk*=a.c.quirks.sleep==='starfish'?1.16:1.1;syk*=.8}else if(a.pose==='sit'){sxk*=1.04;syk*=.9}else if(a.pose==='held'){syk*=1.08;sxk*=.95}
-  const fl=A.flip.x;const fx=Math.sign(fl||1)*Math.max(.3,Math.min(1,Math.abs(fl)));const turnSq=1+(1-Math.abs(fx))*.08;
+  const fl=A.flip.x;const fx=Math.sign(fl||1)*Math.max(.1,Math.min(1,Math.abs(fl)));const turnSq=1+(A.turnK||0)*.05;const turnHop=(A.turnK||0)*5;
   const walkBob=(a.pose==='walk'||a.pose==='run')?-Math.abs(Math.sin(A.step))*(a.c.quirks.walk==='bouncy'?7:a.c.quirks.walk==='shuffle'?1.5:3.5):0;
   ctx.save();ctx.translate(sx,sy);
   if(a.alpha!=null&&a.alpha<1)ctx.globalAlpha=Math.max(0,a.alpha);
-  const rot=(A.lean.x+(a.rot||0))*Math.PI/180*(a.pose==='sleep'?0:1)+(a.c.quirks.walk==='sway'&&a.pose==='walk'?Math.sin(A.step)*.05:0);
+  const wob=a.pose==='dizzy'?Math.sin(A.t*3.1)*7:0;
+  const rot=(A.lean.x+(a.rot||0)+wob)*Math.PI/180*(a.pose==='sleep'?0:1)+(a.c.quirks.walk==='sway'&&a.pose==='walk'?Math.sin(A.step)*.05:0);
   ctx.rotate(rot);ctx.scale(fx*sxk*(1+brk*.4),syk*(1-brk*.15)*turnSq);
-  ctx.translate(0,walkBob*k);
+  ctx.translate(0,(walkBob-turnHop)*k);
   if(r.kind==='image'){const I=r.image;const h=1.45*s*scale,w=h*I.w/I.h;const by=Math.sin(A.br)*.01*h;
    ctx.drawImage(I.cv,-w/2,-h+by,w,h);ctx.restore();a.hitW=w*.8;a.hitH=h;a.headOff=0;return}
   const L=r.L,P=r.piv;
@@ -127,8 +133,11 @@ const Rig={RS,
   const hx=A.hx.x*k,hy=(A.hy.x+Math.sin(A.br)*(a.pose==='sleep'?2.2:1.1))*k+bodyDy*.6;
   ctx.save();const pvx=(P.head[0]-CX)*k,pvy=(P.head[1]-FOOT_Y)*k;ctx.translate(pvx+hx,pvy+hy);ctx.rotate(A.ht.x*Math.PI/180);ctx.translate(-pvx,-pvy);img(H,0,0);
   /* 手上的東西（吃東西、玩具） */
-  if(a.hold){ctx.save();ctx.scale(1/fx,1);const hs=Math.max(10,s*.32*scale);ctx.font=`${hs|0}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-   const bite=a.holdK??1;ctx.globalAlpha*=Math.min(1,bite*3);ctx.translate(0,-(FOOT_Y-150)*k);ctx.scale(.5+bite*.5,.5+bite*.5);ctx.fillText(a.hold,0,0);ctx.restore()}
+  if(a.hold){const it=OC.Content.ITEM[a.hold]||(OC.Creations&&OC.Creations.item(a.hold));const img=it?OC.Icons.itemImg(it):OC.Icons.img(a.hold);if(img){ctx.save();ctx.scale(1/fx,1);const hs=Math.max(12,s*.36*scale);
+   const bite=a.holdK??1;ctx.globalAlpha*=Math.min(1,bite*3);ctx.translate(0,-(FOOT_Y-168)*k);const sc=.55+bite*.45;ctx.scale(sc,sc);ctx.drawImage(img,-hs/2,-hs/2,hs,hs);ctx.restore()}}
+  /* 頭暈：螺旋眼 */
+  if(a.pose==='dizzy'){const col=a.c.look.body||'#F4E8D7';for(const ex of [81,159]){const x=(ex-CX)*k,y=(143-FOOT_Y)*k;ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(x,y,15*k,13*k,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#6B5A72';ctx.lineWidth=Math.max(1,2.4*k);ctx.lineCap='round';ctx.beginPath();for(let i=0;i<=40;i++){const t=i/40*Math.PI*4.2+A.t*7*(ex<120?1:-1);const r=1+i/40*10.5;const px=x+Math.cos(t)*r*k,py=y+Math.sin(t)*r*k*.9;i?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.stroke()}}
   ctx.restore();
   /* 生病：鼻水泡泡／頭上烏雲由 overlay 處理；害羞紅暈 */
   if(a.blushK>0){ctx.globalAlpha=Math.min(1,a.blushK)*.5;ctx.fillStyle='#F27C9B';ctx.beginPath();ctx.ellipse(-45*k+hx,(152-FOOT_Y)*k+hy,14*k,6*k,0,0,Math.PI*2);ctx.ellipse(45*k+hx,(152-FOOT_Y)*k+hy,14*k,6*k,0,0,Math.PI*2);ctx.fill()}

@@ -7,6 +7,7 @@
  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);color-scheme:light}
 :root[data-theme=dark]{--bg:#1F2630;--panel:#2A323D;--panel2:#323B48;--ink:#F1E9DC;--ink2:#B9AE9F;--line:rgba(255,240,220,.1);--sh:0 6px 18px rgba(0,0,0,.35);--sh2:0 12px 34px rgba(0,0,0,.45);color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;touch-action:manipulation}
 input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-select:text}
@@ -166,7 +167,7 @@ input[type=range]{accent-color:var(--acc);height:28px}
 .in-cap p{white-space:pre-line;text-align:center;font-size:19px;font-weight:800;color:#fff;text-shadow:0 2px 10px rgba(30,40,60,.55);opacity:0;transform:translateY(10px);transition:opacity .6s,transform .8s cubic-bezier(.2,.9,.3,1);min-height:3em}.in-cap p.in{opacity:1;transform:none}
 .in-ctl{display:flex;gap:16px;margin-top:10px}.in-ctl .link{color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.4)}
 .in-card{position:absolute;left:50%;bottom:calc(16px + var(--safe-b));transform:translateX(-50%);width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 40px);overflow:auto;padding:18px 18px 14px;border-radius:28px;background:var(--panel);box-shadow:var(--sh2);animation:up .5s cubic-bezier(.2,.9,.3,1.1)}
-@keyframes up{from{transform:translate(-50%,30px);opacity:0}}#intro.dim .in-card{opacity:0;pointer-events:none}
+@keyframes up{from{transform:translate(-50%,30px);opacity:0}}#intro.dim{pointer-events:none!important}#intro.dim .in-card{opacity:0;pointer-events:none}
 .in-card h2{margin:0 0 4px;font-size:22px}
 .demo-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.demo{position:relative;display:flex;flex-direction:column;align-items:center;padding:10px 6px;border-radius:20px;background:var(--panel2);border:2px solid transparent;text-align:center}.demo b{font-size:13px}.demo small{font-size:10.5px;color:var(--ink2)}
 .demo i{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:var(--acc);color:#fff;font-style:normal;display:grid;place-items:center;font-size:12px;opacity:0;transform:scale(.5);transition:.2s}.demo.on{border-color:var(--acc)}.demo.on i{opacity:1;transform:none}

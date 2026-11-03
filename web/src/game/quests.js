@@ -17,18 +17,22 @@ const Quests={
   U.emit('quests')},
  claim(q){if(q.done||q.p<q.n)return false;q.done=1;OC.Items.coins(q.r);OC.UI&&OC.UI.toast(`領取 +${q.r} 星幣`,'coin');U.buzz(14);OC.Store.save();U.emit('quests');return true},
  ready(){return(OC.S.quests.list||[]).filter(q=>!q.done&&q.p>=q.n).length}};
-/* 商店：每天輪替，部分商品特價 */
+/* 商店：每天輪替，部分商品特價；創作市集販售玩家在工坊上架的作品 */
 const Shop={
- SHOPS:{general:{t:'雜貨店',cats:['food','drink','medicine','care','seed']},cafe:{t:'咖啡館',cats:['food','drink'],tags:['sweet','hot']},gift:{t:'禮品店',cats:['gift','toy','furn']}},
- rotate(){const d=U.dayKey(),r=U.rng(U.hash('shop'+d));const out={};for(const [k,s] of Object.entries(this.SHOPS)){let items=C.ITEMS.filter(i=>s.cats.includes(i.cat)&&i.price>0&&!i.forage);if(s.tags)items=items.filter(i=>i.tags.some(t=>s.tags.includes(t))||i.cat==='drink');
-  const pick=[];const pool=[...items];const n=Math.min(pool.length,k==='general'?10:8);const must=k==='general'?['medicine','soup','apple','onigiri','soap']:[];for(const m of must){const i=pool.findIndex(x=>x.id===m);if(i>=0)pick.push(pool.splice(i,1)[0].id)}
+ SHOPS:{general:{t:'雜貨店',ic:'shop',c:'#7FB089',bg:'#E7F4E4',hi:'歡迎光臨！今天的蔬菜很新鮮喔。',cats:['food','drink','medicine','care','seed']},
+  cafe:{t:'咖啡館',ic:'cocoa',c:'#C8664F',bg:'#FBE7DF',hi:'來杯熱可可，配一塊蛋糕吧～',cats:['food','drink'],tags:['sweet','hot']},
+  gift:{t:'禮品店',ic:'gift',c:'#E66C8A',bg:'#FDE6EE',hi:'想送禮物給誰呢？我幫你包裝！',cats:['gift','toy']},
+  furniture:{t:'家具店',ic:'sofa',c:'#6E96C2',bg:'#E3EDF8',hi:'讓家裡更溫暖的家具都在這裡。',cats:['furn']},
+  market:{t:'創作市集',ic:'palette',c:'#9A78EE',bg:'#EFE8FF',hi:'這裡是大家在工坊做的作品！',creations:1}},
+ rotate(){const d=U.dayKey(),r=U.rng(U.hash('shop'+d));const out={};for(const [k,s] of Object.entries(this.SHOPS)){if(s.creations)continue;let items=C.ITEMS.filter(i=>s.cats.includes(i.cat)&&i.price>0&&!i.forage);if(s.tags)items=items.filter(i=>i.tags.some(t=>s.tags.includes(t))||i.cat==='drink');
+  const pick=[];const pool=[...items];const n=Math.min(pool.length,k==='general'?10:k==='furniture'?12:8);const must=k==='general'?['medicine','soup','apple','onigiri','soap','seed']:[];for(const m of must){const i=pool.findIndex(x=>x.id===m);if(i>=0)pick.push(pool.splice(i,1)[0].id)}
   while(pick.length<n&&pool.length)pick.push(pool.splice(Math.floor(r()*pool.length),1)[0].id);out[k]={day:d,items:pick,sale:pick[Math.floor(r()*pick.length)]}}OC.S.shop=out;OC.Store.save()},
- stock(k){if(!OC.S.shop||!OC.S.shop[k]||OC.S.shop[k].day!==U.dayKey())this.rotate();return OC.S.shop[k]},
- price(k,id){const it=C.ITEM[id],s=this.stock(k);return s.sale===id?Math.round(it.price*.7):it.price},
- buy(k,id,n=1){const p=this.price(k,id)*n;if(OC.S.coins<p){OC.UI&&OC.UI.toast('星幣不夠喔','warn');return false}
-  /* 家具不重複購買 */
-  const it=C.ITEM[id];if(it.cat==='furn'&&((OC.S.world.houseFurn||[]).some(f=>f.k===it.furn)||OC.Items.qty(id))){OC.UI&&OC.UI.toast('已經有這件家具了','info');return false}
-  if(!OC.Items.coins(-p))return false;OC.Items.add(id,n);OC.Quests.on('buy');OC.Store.flush();return true},
- sell(id,n=1){const it=C.ITEM[id];if(!it||!it.sell||OC.Items.qty(id)<n)return false;OC.Items.take(id,n);OC.Items.coins(it.sell*n);OC.Store.flush();return true}};
+ stock(k){const S=this.SHOPS[k];if(S&&S.creations){const L=OC.Creations?OC.Creations.listed():[];return{day:U.dayKey(),items:L.map(x=>x.id),sale:null}}
+  if(!OC.S.shop||!OC.S.shop[k]||OC.S.shop[k].day!==U.dayKey())this.rotate();return OC.S.shop[k]||{items:[],sale:null}},
+ item:id=>C.ITEM[id]||(OC.Creations&&OC.Creations.item(id)),
+ price(k,id){const it=this.item(id),s=this.stock(k);if(!it)return 0;return s.sale===id?Math.round(it.price*.7):it.price},
+ buy(k,id,n=1){const it=this.item(id);if(!it)return false;const p=this.price(k,id)*n;if(OC.S.coins<p){OC.UI&&OC.UI.toast('星幣不夠喔','warn');return false}
+  if(!OC.Items.coins(-p))return false;OC.Items.add(id,n);OC.Quests.on('buy');OC.Items.xp(3*n);OC.Store.flush();return true},
+ sell(id,n=1){const it=this.item(id);if(!it||!it.sell||OC.Items.qty(id)<n)return false;OC.Items.take(id,n);OC.Items.coins(it.sell*n);OC.Store.flush();return true}};
 OC.Quests=Quests;OC.Shop=Shop;
 })(window.OC);

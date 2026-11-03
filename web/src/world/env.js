@@ -13,7 +13,7 @@ const KEYS=[
  {h:18.6,sky:['#5B5DA6','#F49A7C'],sea:'#3E6E9C',tint:'#E8A99A',haze:'#E7998A',sun:.35,star:.2},
  {h:19.8,sky:['#232F63','#6B5C93'],sea:'#27426B',tint:'#8C8BC2',haze:'#4E5288',sun:0,star:.7},
  {h:24, sky:['#0E1838','#2B3A6B'],sea:'#1D3557',tint:'#6C77B8',haze:'#2E3E70',sun:0,star:1}];
-const WX={sunny:{t:'晴天',ic:'☀️'},cloudy:{t:'多雲',ic:'⛅'},rain:{t:'下雨',ic:'🌧️'},storm:{t:'暴風雨',ic:'⛈️'},snow:{t:'下雪',ic:'❄️'}};
+const WX={sunny:{t:'晴天',ic:'sun'},cloudy:{t:'多雲',ic:'partly'},rain:{t:'下雨',ic:'rain'},storm:{t:'暴風雨',ic:'storm'},snow:{t:'下雪',ic:'snow'}};
 const Env={WX,t:0,h:12,phase:'day',wid:'sunny',pal:null,ver:0,wind:.3,
  now(){return new Date(Date.now()+(OC.S?OC.S.world.timeOffset||0:0))},
  hourOf(d){return d.getHours()+d.getMinutes()/60+d.getSeconds()/3600},

@@ -24,7 +24,7 @@ const Intro={
  finishIntro(){OC.Env.cine=null;const el=this.el();el.className='intro';setTimeout(()=>{el.hidden=true;el.innerHTML=''},400);OC.UI.blockWorld=false;$('#hud').classList.remove('hide');$('#nav').classList.remove('hide');Sim.refreshActors();const a=Sim.active();OC.Cam.focus=a;OC.Cam.follow=!!a;if(a)OC.Cam.set(a.x,a.z+.5,16)},
  /* ---------- 2. 新遊戲：選擇角色建立方式 ---------- */
  newGame(){const el=this.el();this.pick=new Set();el.innerHTML=`<div class="in-card"><h2>和誰一起生活？</h2><p class="lead">可以選示範夥伴、創造自己的 OC，或兩者都要。之後隨時能再新增、編輯或移除。</p>
-  <div class="demo-row">${OC.DEMOS.map(d=>`<button class="demo" data-demo="${d.id}"><span class="hav lg">${OC.ocSVG(d)}</span><b>${esc(d.name)}</b><small>${esc(d.sub)}</small><i>✓</i></button>`).join('')}</div>
+  <div class="demo-row">${OC.DEMOS.map(d=>`<button class="demo" data-demo="${d.id}"><span class="hav lg">${OC.ocSVG(d)}</span><b>${esc(d.name)}</b><small>${esc(d.sub)}</small><i>${OC.Icons.svg('check',14)}</i></button>`).join('')}</div>
   <div class="col"><button class="btn primary" data-opt="demo" disabled>和選擇的夥伴一起開始</button><button class="btn" data-opt="create">${UI.ic('brush')}從零創造我的 OC</button><button class="btn" data-opt="both" disabled>選擇的夥伴＋創造我的 OC</button><button class="btn ghost" data-opt="import">匯入角色檔／完整備份</button></div>
   <label class="sw"><span><b>跳過新手引導</b><small>熟悉玩法的話可以直接開始</small></span><input type="checkbox" id="skipTut"><i></i></label></div>`;
   el.onclick=async e=>{const b=e.target.closest('button');if(!b)return;U.buzz(6);
@@ -86,16 +86,16 @@ const Intro={
 const STEPS=[
  {t:'點一下夥伴',d:'夥伴會跟你打招呼，還會跳出可以做的事。',ev:'tap',at:'actor'},
  {t:'在夥伴身上上下滑動',d:'就像真的在摸頭一樣，來回滑幾次——夥伴會很開心！',ev:'pet',at:'actor'},
- {t:'打開右側的背包',d:'點一下背包把手，然後把 🍎 蘋果「拖」到夥伴身上。',ev:'feed',at:'#qbag'},
+ {t:'打開快捷背包',d:'點左下角的嫩芽按鈕，然後把蘋果「拖」到夥伴身上（或直接點一下）。',ev:'feed',at:'#hTray'},
  {t:'移動與縮放鏡頭',d:'單指拖曳畫面移動，雙指縮放。按右下角「跟隨」可以回到夥伴身邊。',ev:'pan',at:null,next:1},
- {t:'看看夥伴的狀態',d:'點左上角的頭像，就能看到心情、需求和願望。',ev:'qs',at:'#hChar'},
+ {t:'看看夥伴的狀態',d:'點左上角的頭像，就能看到心情、需求和願望。',ev:'qs',at:'#hAv'},
  {t:'你的房子',d:'點房子可以進屋。夥伴會在裡面睡覺、做飯、看書。',ev:'house',at:null,next:1},
- {t:'到處去看看',d:'點下方「地圖」可以去廣場、海灘和森林。夥伴們也會自己出門喔！',ev:'map',at:'[data-p=map]',next:1}];
+ {t:'到處去看看',d:'點右側的地圖按鈕，可以去廣場、海灘和森林。夥伴們也會自己出門喔！',ev:'map',at:'.hud-rail [data-r=map]',next:1}];
 const Tutorial={i:-1,start(){this.i=-1;this.off&&this.off();this.off=U.on('tut',k=>{const s=STEPS[this.i];if(s&&s.ev===k)setTimeout(()=>this.next(),600)});this.next()},
  next(){this.i++;const host=$('#coach');if(this.i>=STEPS.length){host.className='coach';host.innerHTML='';OC.S.flags.tutorialDone=true;OC.Items.coins(100);UI.celebrate(OC.Sim.active()?.c,'新手引導完成！+100 星幣','歡迎來到小島');OC.Store.save();this.off&&this.off();return}
   const s=STEPS[this.i];host.innerHTML=`<div class="co-c"><small>${this.i+1} / ${STEPS.length}</small><b>${esc(s.t)}</b><p>${esc(s.d)}</p><div class="row end">${s.next?'<button class="btn primary" data-n>下一步</button>':''}<button class="link" data-x>跳過引導</button></div></div><i class="co-ring" hidden></i>`;host.className='coach on';
   host.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-n'))this.next();else{this.i=STEPS.length-1;this.next()}};
-  if(s.at==='#qbag')OC.UI.bag.open(false);this.ring(s.at)},
+  this.ring(s.at)},
  ring(at){const r=$('.co-ring','#coach'.length?$('#coach'):document);if(!r)return;clearInterval(this.rt);if(!at){r.hidden=true;return}
   const place=()=>{let x,y,w,h;if(at==='actor'){const a=OC.Sim.active();if(!a||!a.ss){r.hidden=true;return}w=a.ss*.9;h=a.ss*1.15;x=a.sx-w/2;y=a.sy-h}else{const n=$(at);if(!n){r.hidden=true;return}const b=n.getBoundingClientRect();x=b.left-6;y=b.top-6;w=b.width+12;h=b.height+12}
    r.hidden=false;r.style.transform=`translate(${x|0}px,${y|0}px)`;r.style.width=(w|0)+'px';r.style.height=(h|0)+'px'};place();this.rt=setInterval(place,250)}};

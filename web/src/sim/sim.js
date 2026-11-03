@@ -1,7 +1,7 @@
 /* OC Shimeji v4 · 生活模擬核心：需求、情緒、效用 AI、移動、旅行、記憶、生病、願望、特質成長 */
 (function(OC){'use strict';
 const {U,Content:C,Chars,Acts,Env,Items}=OC;
-const EXIT={home:{x:-8.6,z:6.6},plaza:{x:-9.4,z:3.2},beach:{x:-11.2,z:.4},forest:{x:-9.6,z:4.6},house:{x:0,z:2.3}};
+const EXIT={home:{x:-8.6,z:6.6},plaza:{x:-9.4,z:3.2},beach:{x:-11.2,z:.4},forest:{x:-9.6,z:4.6},house:{x:-2.7,z:-2.05}};
 const urg=n=>Math.pow(U.clamp((100-n)/100,0,1),1.5)*1.5+.04;
 const scene=id=>OC.Scenes.get(id);
 
@@ -13,9 +13,13 @@ class Agent{constructor(c){this.c=c;this.isActor=true;this.id=c.id;this.y=0;this
  feel(k,life=1.6){this.emote={k,t:0,life}}
  squash(v=.82){if(this.an)this.an.sq.x=v,this.an.sq.v=0}
  hop(h=1.6){if(this.y<=.001){this.vy=h;this.squash(.86)}}
- busy(){return !!(this.held||this.petting||this.inter||(this.task&&this.task.lock))}}
-Agent.prototype.update=function(dt){/* 跳躍物理 */
- if(this.y>0||this.vy>0){this.vy-=9.8*dt;this.y+=this.vy*dt;if(this.y<=0){this.y=0;if(this.vy<-1.2){this.squash(U.clamp(1+this.vy*.05,.72,.95));if(OC.R.sc&&OC.R.sc.id===this.loc)OC.Fx.dust(this.x,this.z,3)}this.vy=0}}
+ busy(){return !!(this.held||this.petting||this.inter||(this.task&&this.task.lock)||this.y>.05)}}
+Agent.prototype.update=function(dt){/* 跳躍、拋出物理（被抱著時懸在空中、輕輕擺盪） */
+ if(this.held){this.y+=(.9-this.y)*Math.min(1,dt*10);const sw=this.held.sw;sw.v+=(-sw.x*60-sw.v*4)*dt;sw.x+=sw.v*dt*.06;this.rot=U.clamp(sw.x,-28,28)}
+ else{if(this.rot)this.rot*=Math.pow(.02,dt);
+ if(this.y>0||this.vy>0){this.peak=Math.max(this.peak||0,this.y);this.vy-=9.8*dt;this.y+=this.vy*dt;if(this.tvx){this.x+=this.tvx*dt;this.tvx*=Math.pow(.6,dt);const b=OC.Scenes.get(this.loc).bounds;this.x=U.clamp(this.x,b[0],b[2])}
+  if(this.y<=0){this.y=0;const v=this.vy;if(v<-1.2){this.squash(U.clamp(1+v*.05,.62,.95));if(OC.R.sc&&OC.R.sc.id===this.loc)OC.Fx.dust(this.x,this.z,v<-5?8:3);if(v<-5)OC.R.cam.shake=.12}this.vy=0;
+   if(this.pose==='fall'){OC.Play.land(this,this.peak||0)}this.peak=0}}}
  if(this.bubble){this.bubble.t+=dt;if(this.bubble.t>this.bubble.life)this.bubble=null}
  if(this.emote){this.emote.t+=dt;if(this.emote.t>this.emote.life)this.emote=null}
  if(this.nameT>0)this.nameT-=dt;if(this.blushK>0)this.blushK-=dt*.4};
@@ -169,7 +173,7 @@ const Sim={agents:new Map(),acc:0,t:0,
   if(this.visible(a)&&Math.random()<.4)a.say(Chars.say(c,U.pick([`我去${C.LOC[loc].t}一下～`,`出發去${C.LOC[loc].t}！`,'我先走囉。'])))},
  sendTo(a,loc){/* 玩家指示：帶夥伴去某地 */const T={def:{id:'go',t:'前往',gain:{},dur:[3,6],pose:'stand',loc:[loc]},loc,t:0,dur:4,phase:'go'};a.task=T;if(loc!==a.c.loc)this.travel(a,loc);else this.target(a,T)},
  /* ================= 移動（避障、互相讓路） ================= */
- move(a,dt){const sc=scene(a.loc);if(a.held||a.away)return;
+ move(a,dt){const sc=scene(a.loc);if(a.held||a.away||a.y>.05||a.dizzy)return;
   if(!a.goal){a.vx=U.approach(a.vx,0,10,dt);a.vz=U.approach(a.vz,0,10,dt);if(Math.abs(a.vx)<.02&&(a.pose==='walk'||a.pose==='run'))a.pose=a.task&&a.task.phase==='do'?a.pose:'stand';return}
   const c=a.c;const dx=a.goal.x-a.x,dz=a.goal.z-a.z,dist=Math.hypot(dx,dz);
   if(dist<.12){a.goal=null;a.stuck=0;return}
@@ -181,7 +185,8 @@ const Sim={agents:new Map(),acc:0,t:0,
   for(const o of this.agents.values()){if(o===a||o.loc!==a.loc||o.away)continue;const ex=nx-o.x,ez=nz-o.z,d2=ex*ex+ez*ez;if(OC.Social&&d2<5&&d2>1e-4&&OC.Social.rel(c.id,o.id).broken){const d=Math.sqrt(d2);nx+=ex/d*sp*dt*.6;nz+=ez/d*sp*dt*.6;continue}if(d2<.62&&d2>1e-4){const d=Math.sqrt(d2);nx+=ex/d*(.79-d)*.22;nz+=ez/d*(.79-d)*.22}}
   if(!ok||!sc.walk(nx,nz)){a.stuck+=dt;if(a.stuck>1.4){a.goal=null;a.stuck=0}return}
   a.stuck=Math.max(0,a.stuck-dt);const vx=(nx-a.x)/dt,vz=(nz-a.z)/dt;a.vx=U.approach(a.vx,vx,12,dt);a.vz=U.approach(a.vz,vz,12,dt);a.x=nx;a.z=nz;
-  if(Math.abs(a.vx)>.08)a.facing=a.vx>0?1:-1;if(a.pose!=='walk'&&a.pose!=='run')a.pose=a.goal.fast?'run':'walk';
+  /* 轉向遲滯：持續往同一方向移動一小段時間才轉身，避免來回抖動翻面 */
+  const want=a.vx>0?1:-1;if(Math.abs(a.vx)>.28&&want!==a.facing){a.ft=(a.ft||0)+dt;if(a.ft>.14){a.facing=want;a.ft=0}}else a.ft=0;if(a.pose!=='walk'&&a.pose!=='run')a.pose=a.goal.fast?'run':'walk';
   if(a.pose==='run'&&Math.random()<dt*3&&this.visible(a))OC.Fx.dust(a.x,a.z,1)},
  visible(a){return OC.R.sc&&OC.R.sc.id===a.loc&&!a.away},
 

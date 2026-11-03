@@ -69,12 +69,13 @@ Chars.sanitizeProfile=sanitizeProfile;
 const Items={
  get:id=>C.ITEM[id],
  qty:id=>OC.S.inv[id]||0,
- add(id,n=1){if(!C.ITEM[id]||!(n>0))return;OC.S.inv[id]=Math.min(999,(OC.S.inv[id]||0)+Math.floor(n));Items.seen(id);OC.Store.save();U.emit('inv')},
+ add(id,n=1){if(!(C.ITEM[id]||(OC.Creations&&OC.Creations.get(id)))||!(n>0))return;OC.S.inv[id]=Math.min(999,(OC.S.inv[id]||0)+Math.floor(n));Items.seen(id);OC.Store.save();U.emit('inv')},
  take(id,n=1){const q=OC.S.inv[id]||0;if(q<n)return false;const r=q-n;if(r>0)OC.S.inv[id]=r;else delete OC.S.inv[id];OC.Store.save();U.emit('inv');return true},
- seen(id){const it=C.ITEM[id];if(!it)return;const cx=OC.S.codex;if(!cx[id]){cx[id]={t:Date.now(),n:0};U.emit('codex',id);if(['col','fish','bug'].includes(it.cat)&&OC.UI)OC.UI.toast(`新收藏：${it.em} ${it.name}`,'star')}cx[id].n++},
+ seen(id){const it=C.ITEM[id];if(!it)return;/* 作品不列入圖鑑 */const cx=OC.S.codex;if(!cx[id]){cx[id]={t:Date.now(),n:0};U.emit('codex',id);if(['col','fish','bug'].includes(it.cat)&&OC.UI)OC.UI.toast(`新收藏：${it.em} ${it.name}`,'star')}cx[id].n++},
  list(cat){return Object.entries(OC.S.inv).filter(([id,q])=>q>0&&C.ITEM[id]&&(!cat||C.ITEM[id].cat===cat)).map(([id,q])=>Object.assign({q},C.ITEM[id]))},
  /* 3.2 背包物品名稱對應 */
  matchLegacy(it){const map={'蘋果':'apple','草莓蛋糕':'cake','熱可可':'cocoa','氣泡水':'soda','小毛線球':'yarn','手寫卡片':'card','小花束':'bouquet','緞帶髮飾':'ribbon'};return map[it&&it.name]||null},
+ xp(n){const S=OC.S;const before=OC.UI&&OC.UI.xpInfo?OC.UI.xpInfo().L:0;S.xp=(S.xp||0)+Math.max(0,n|0);const after=OC.UI&&OC.UI.xpInfo?OC.UI.xpInfo().L:0;if(after>before&&before){S.gems=(S.gems||0)+10;OC.UI.celebrate(null,`小島等級 Lv.${after}`,'升級！+10 星鑽','star');OC.Sim.log(null,`小島升到 Lv.${after}！獲得 10 星鑽`,'star')}U.emit('xp')},
  coins(n){if(n<0&&OC.S.coins+n<0)return false;OC.S.coins=Math.max(0,Math.floor(OC.S.coins+n));OC.Store.save();U.emit('coins',n);return true}};
 OC.Chars=Chars;OC.Items=Items;
 })(window.OC);

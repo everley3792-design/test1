@@ -20,6 +20,7 @@
  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);color-scheme:light}
 :root[data-theme=dark]{--bg:#1F2630;--panel:#2A323D;--panel2:#323B48;--ink:#F1E9DC;--ink2:#B9AE9F;--line:rgba(255,240,220,.1);--sh:0 6px 18px rgba(0,0,0,.35);--sh2:0 12px 34px rgba(0,0,0,.45);color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;touch-action:manipulation}
 input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-select:text}
@@ -179,7 +180,7 @@ input[type=range]{accent-color:var(--acc);height:28px}
 .in-cap p{white-space:pre-line;text-align:center;font-size:19px;font-weight:800;color:#fff;text-shadow:0 2px 10px rgba(30,40,60,.55);opacity:0;transform:translateY(10px);transition:opacity .6s,transform .8s cubic-bezier(.2,.9,.3,1);min-height:3em}.in-cap p.in{opacity:1;transform:none}
 .in-ctl{display:flex;gap:16px;margin-top:10px}.in-ctl .link{color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.4)}
 .in-card{position:absolute;left:50%;bottom:calc(16px + var(--safe-b));transform:translateX(-50%);width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 40px);overflow:auto;padding:18px 18px 14px;border-radius:28px;background:var(--panel);box-shadow:var(--sh2);animation:up .5s cubic-bezier(.2,.9,.3,1.1)}
-@keyframes up{from{transform:translate(-50%,30px);opacity:0}}#intro.dim .in-card{opacity:0;pointer-events:none}
+@keyframes up{from{transform:translate(-50%,30px);opacity:0}}#intro.dim{pointer-events:none!important}#intro.dim .in-card{opacity:0;pointer-events:none}
 .in-card h2{margin:0 0 4px;font-size:22px}
 .demo-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.demo{position:relative;display:flex;flex-direction:column;align-items:center;padding:10px 6px;border-radius:20px;background:var(--panel2);border:2px solid transparent;text-align:center}.demo b{font-size:13px}.demo small{font-size:10.5px;color:var(--ink2)}
 .demo i{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:var(--acc);color:#fff;font-style:normal;display:grid;place-items:center;font-size:12px;opacity:0;transform:scale(.5);transition:.2s}.demo.on{border-color:var(--acc)}.demo.on i{opacity:1;transform:none}
@@ -742,55 +743,55 @@ C.PREF=[[-2,'最討厭','#D46A6A'],[-1,'討厭','#E39B7B'],[0,'普通','#B8B0A2'
 /* ---------- 物品 ---------- */
 const I=(id,name,em,cat,price,tags,o={})=>Object.assign({id,name,em,cat,price,tags},o);
 C.ITEMS=[
- I('apple','蘋果','🍎','food',30,['fruit','sweet','crunchy'],{fx:{hunger:22},desc:'清脆多汁的小點心。'}),
- I('cake','草莓蛋糕','🍰','food',90,['sweet','soft','dairy','fruit'],{fx:{hunger:30,fun:12},desc:'鬆軟的蛋糕，大部分夥伴都喜歡。'}),
- I('onigiri','飯糰','🍙','food',50,['salty','savory','soft'],{fx:{hunger:40},desc:'鹹鹹的海苔飯糰，很有飽足感。'}),
- I('fishgrill','烤魚','🍢','food',80,['fish','salty','savory','hot'],{fx:{hunger:45},desc:'海邊現烤，香氣四溢。'}),
- I('soup','蔬菜熱湯','🍲','food',70,['veg','hot','savory','soft'],{fx:{hunger:35,comfort:15},heal:1,desc:'暖呼呼的湯，生病時最需要。'}),
- I('porridge','白粥','🥣','food',40,['soft','hot','salty'],{fx:{hunger:28,comfort:10},heal:.6,desc:'溫和的粥，腸胃不舒服時吃。'}),
- I('bread','可頌','🥐','food',60,['sweet','crunchy','dairy'],{fx:{hunger:30},desc:'奶油香的可頌。'}),
- I('curry','咖哩飯','🍛','food',110,['spicy','savory','hot','meat'],{fx:{hunger:55},desc:'香辣濃郁，有的夥伴會被辣到。'}),
- I('pudding','焦糖布丁','🍮','food',75,['sweet','soft','dairy','cold'],{fx:{hunger:20,fun:10}}),
- I('cookie','手工餅乾','🍪','food',45,['sweet','crunchy'],{fx:{hunger:15,fun:6}}),
- I('salad','田園沙拉','🥗','food',55,['veg','sour','crunchy','cold'],{fx:{hunger:25}}),
- I('lemon','檸檬塔','🍋','food',70,['sour','sweet','fruit'],{fx:{hunger:22,fun:6}}),
- I('mushroom','烤蘑菇串','🍄','food',40,['savory','veg','hot'],{fx:{hunger:25},forage:1}),
- I('berry','野莓','🫐','food',20,['fruit','sweet','sour'],{fx:{hunger:12},forage:1}),
- I('cocoa','熱可可','☕','drink',50,['sweet','hot','dairy'],{fx:{hunger:6,comfort:18},heal:.4}),
- I('soda','氣泡水','🥤','drink',35,['cold','sweet'],{fx:{fun:10}}),
- I('milk','牛奶','🥛','drink',30,['dairy','cold'],{fx:{hunger:10,energy:5}}),
- I('tea','花草茶','🍵','drink',45,['hot','bitter'],{fx:{comfort:20,energy:4},heal:.5}),
- I('juice','果汁','🧃','drink',40,['fruit','sweet','cold'],{fx:{hunger:8,fun:6}}),
- I('medicine','草本藥丸','💊','medicine',120,['bitter'],{heal:2,desc:'苦苦的，但能讓生病的夥伴快點好起來。'}),
- I('soap','香皂泡泡','🧼','care',40,[],{fx:{hygiene:60},desc:'幫夥伴洗香香。'}),
- I('yarn','毛線球','🧶','toy',100,[],{fx:{fun:30},reuse:1}),
- I('ball','彩色皮球','⚽','toy',120,[],{fx:{fun:34,energy:-6},reuse:1}),
- I('kite','風箏','🪁','toy',160,[],{fx:{fun:40},reuse:1}),
- I('bubble','泡泡棒','🫧','toy',80,[],{fx:{fun:28},reuse:1}),
- I('card','手寫卡片','💌','gift',60,['heart'],{gift:2}),
- I('bouquet','小花束','💐','gift',90,['flower'],{gift:3}),
- I('ribbon','緞帶髮飾','🎀','gift',150,['wear'],{gift:3}),
- I('shellneck','貝殼項鍊','📿','gift',180,['sea'],{gift:4}),
- I('starcharm','星星吊飾','🌟','gift',200,['star'],{gift:4}),
+ I('apple','蘋果','','food',30,['fruit','sweet','crunchy'],{fx:{hunger:22},desc:'清脆多汁的小點心。'}),
+ I('cake','草莓蛋糕','','food',90,['sweet','soft','dairy','fruit'],{fx:{hunger:30,fun:12},desc:'鬆軟的蛋糕，大部分夥伴都喜歡。'}),
+ I('onigiri','飯糰','','food',50,['salty','savory','soft'],{fx:{hunger:40},desc:'鹹鹹的海苔飯糰，很有飽足感。'}),
+ I('fishgrill','烤魚','','food',80,['fish','salty','savory','hot'],{fx:{hunger:45},desc:'海邊現烤，香氣四溢。'}),
+ I('soup','蔬菜熱湯','','food',70,['veg','hot','savory','soft'],{fx:{hunger:35,comfort:15},heal:1,desc:'暖呼呼的湯，生病時最需要。'}),
+ I('porridge','白粥','','food',40,['soft','hot','salty'],{fx:{hunger:28,comfort:10},heal:.6,desc:'溫和的粥，腸胃不舒服時吃。'}),
+ I('bread','可頌','','food',60,['sweet','crunchy','dairy'],{fx:{hunger:30},desc:'奶油香的可頌。'}),
+ I('curry','咖哩飯','','food',110,['spicy','savory','hot','meat'],{fx:{hunger:55},desc:'香辣濃郁，有的夥伴會被辣到。'}),
+ I('pudding','焦糖布丁','','food',75,['sweet','soft','dairy','cold'],{fx:{hunger:20,fun:10}}),
+ I('cookie','手工餅乾','','food',45,['sweet','crunchy'],{fx:{hunger:15,fun:6}}),
+ I('salad','田園沙拉','','food',55,['veg','sour','crunchy','cold'],{fx:{hunger:25}}),
+ I('lemon','檸檬塔','','food',70,['sour','sweet','fruit'],{fx:{hunger:22,fun:6}}),
+ I('mushroom','烤蘑菇串','','food',40,['savory','veg','hot'],{fx:{hunger:25},forage:1}),
+ I('berry','野莓','','food',20,['fruit','sweet','sour'],{fx:{hunger:12},forage:1}),
+ I('cocoa','熱可可','','drink',50,['sweet','hot','dairy'],{fx:{hunger:6,comfort:18},heal:.4}),
+ I('soda','氣泡水','','drink',35,['cold','sweet'],{fx:{fun:10}}),
+ I('milk','牛奶','','drink',30,['dairy','cold'],{fx:{hunger:10,energy:5}}),
+ I('tea','花草茶','','drink',45,['hot','bitter'],{fx:{comfort:20,energy:4},heal:.5}),
+ I('juice','果汁','','drink',40,['fruit','sweet','cold'],{fx:{hunger:8,fun:6}}),
+ I('medicine','草本藥丸','','medicine',120,['bitter'],{heal:2,desc:'苦苦的，但能讓生病的夥伴快點好起來。'}),
+ I('soap','香皂泡泡','','care',40,[],{fx:{hygiene:60},desc:'幫夥伴洗香香。'}),
+ I('yarn','毛線球','','toy',100,[],{fx:{fun:30},reuse:1}),
+ I('ball','彩色皮球','','toy',120,[],{fx:{fun:34,energy:-6},reuse:1}),
+ I('kite','風箏','','toy',160,[],{fx:{fun:40},reuse:1}),
+ I('bubble','泡泡棒','','toy',80,[],{fx:{fun:28},reuse:1}),
+ I('card','手寫卡片','','gift',60,['heart'],{gift:2}),
+ I('bouquet','小花束','','gift',90,['flower'],{gift:3}),
+ I('ribbon','緞帶髮飾','','gift',150,['wear'],{gift:3}),
+ I('shellneck','貝殼項鍊','','gift',180,['sea'],{gift:4}),
+ I('starcharm','星星吊飾','','gift',200,['star'],{gift:4}),
  /* 收藏與素材（探索取得，可賣出） */
- I('shell','扇貝殼','🐚','col',15,['sea'],{sell:15,cod:'beach'}),
- I('starfish','海星','⭐','col',30,['sea'],{sell:30,cod:'beach'}),
- I('seaglass','海玻璃','💎','col',60,['sea'],{sell:60,cod:'beach',rare:1}),
- I('fish1','小鯽魚','🐟','fish',20,['fish'],{sell:25,cod:'fish'}),
- I('fish2','熱帶魚','🐠','fish',50,['fish'],{sell:55,cod:'fish'}),
- I('fish3','河豚','🐡','fish',90,['fish'],{sell:90,cod:'fish',rare:1}),
- I('fish4','小章魚','🐙','fish',140,['fish'],{sell:140,cod:'fish',rare:2}),
- I('bug1','紋白蝶','🦋','bug',25,[],{sell:25,cod:'bug'}),
- I('bug2','瓢蟲','🐞','bug',35,[],{sell:35,cod:'bug'}),
- I('bug3','獨角仙','🪲','bug',110,[],{sell:110,cod:'bug',rare:1}),
- I('flower','野花','🌼','col',10,['flower'],{sell:10,cod:'plant'}),
- I('clover','四葉草','🍀','col',80,[],{sell:80,cod:'plant',rare:1}),
- I('acorn','橡實','🌰','col',12,[],{sell:12,cod:'plant'}),
- I('seed','花種子','🌱','seed',25,[],{desc:'種在家門前的花圃，會長出花來。'}),
+ I('shell','扇貝殼','','col',15,['sea'],{sell:15,cod:'beach'}),
+ I('starfish','海星','','col',30,['sea'],{sell:30,cod:'beach'}),
+ I('seaglass','海玻璃','','col',60,['sea'],{sell:60,cod:'beach',rare:1}),
+ I('fish1','小鯽魚','','fish',20,['fish'],{sell:25,cod:'fish'}),
+ I('fish2','熱帶魚','','fish',50,['fish'],{sell:55,cod:'fish'}),
+ I('fish3','河豚','','fish',90,['fish'],{sell:90,cod:'fish',rare:1}),
+ I('fish4','小章魚','','fish',140,['fish'],{sell:140,cod:'fish',rare:2}),
+ I('bug1','紋白蝶','','bug',25,[],{sell:25,cod:'bug'}),
+ I('bug2','瓢蟲','','bug',35,[],{sell:35,cod:'bug'}),
+ I('bug3','獨角仙','','bug',110,[],{sell:110,cod:'bug',rare:1}),
+ I('flower','野花','','col',10,['flower'],{sell:10,cod:'plant'}),
+ I('clover','四葉草','','col',80,[],{sell:80,cod:'plant',rare:1}),
+ I('acorn','橡實','','col',12,[],{sell:12,cod:'plant'}),
+ I('seed','花種子','','seed',25,[],{desc:'種在家門前的花圃，會長出花來。'}),
  /* 家具：放在房子裡，角色會使用 */
- I('f_bed','木頭小床','🛏️','furn',0,[],{furn:'bed'}),I('f_table','圓木餐桌','🍽️','furn',0,[],{furn:'table'}),I('f_sofa','軟綿沙發','🛋️','furn',380,[],{furn:'sofa'}),
- I('f_shelf','書櫃','📚','furn',320,[],{furn:'shelf'}),I('f_lamp','立燈','💡','furn',160,[],{furn:'lamp'}),I('f_plant','觀葉植物','🪴','furn',120,[],{furn:'plant'}),
- I('f_kitchen','小廚房','🍳','furn',0,[],{furn:'kitchen'}),I('f_rug','圓形地毯','🟠','furn',140,[],{furn:'rug'}),I('f_tv','復古收音機','📻','furn',260,[],{furn:'radio'}),I('f_bath','木浴桶','🛁','furn',300,[],{furn:'bath'})];
+ I('f_bed','木頭小床','','furn',0,[],{furn:'bed'}),I('f_table','圓木餐桌','','furn',0,[],{furn:'table'}),I('f_sofa','軟綿沙發','','furn',380,[],{furn:'sofa'}),
+ I('f_shelf','書櫃','','furn',320,[],{furn:'shelf'}),I('f_lamp','立燈','','furn',160,[],{furn:'lamp'}),I('f_plant','觀葉植物','','furn',120,[],{furn:'plant'}),
+ I('f_kitchen','小廚房','','furn',0,[],{furn:'kitchen'}),I('f_rug','圓形地毯','','furn',140,[],{furn:'rug'}),I('f_tv','復古收音機','','furn',260,[],{furn:'radio'}),I('f_bath','木浴桶','','furn',300,[],{furn:'bath'})];
 C.ITEM=Object.fromEntries(C.ITEMS.map(i=>[i.id,i]));
 C.CATNAME={food:'食物',drink:'飲料',medicine:'藥品',care:'清潔',toy:'玩具',gift:'禮物',col:'收藏',fish:'魚類',bug:'昆蟲',seed:'種子',furn:'家具'};
 
@@ -804,11 +805,11 @@ C.BASE_FURN=[{k:'bed',x:-2.6,z:-1.6},{k:'table',x:1.2,z:.4},{k:'kitchen',x:2.6,z
 
 /* ---------- 地點 ---------- */
 C.LOCS=[
- {id:'home',t:'家園小島',d:'你和夥伴們的家。房子、花圃與營火都在這裡。',ic:'🏡'},
- {id:'house',t:'我的家',d:'小屋裡面：睡覺、吃飯、看書、窩沙發。',ic:'🛋️',inside:1},
- {id:'plaza',t:'中央廣場',d:'噴水池、商店街與咖啡館，大家聚會的地方。',ic:'⛲'},
- {id:'beach',t:'星砂海灘',d:'釣魚、撿貝殼、看夕陽。',ic:'🏖️'},
- {id:'forest',t:'微風森林',d:'採蘑菇、抓昆蟲、在樹蔭下發呆。',ic:'🌲'}];
+ {id:'home',t:'家園小島',d:'你和夥伴們的家。房子、花圃與營火都在這裡。',ic:'house'},
+ {id:'house',t:'我的家',d:'小屋裡面：睡覺、吃飯、看書、窩沙發。',ic:'sofa',inside:1},
+ {id:'plaza',t:'中央廣場',d:'噴水池、商店街與咖啡館，大家聚會的地方。',ic:'fountain'},
+ {id:'beach',t:'星砂海灘',d:'釣魚、撿貝殼、看夕陽。',ic:'beach'},
+ {id:'forest',t:'微風森林',d:'採蘑菇、抓昆蟲、在樹蔭下發呆。',ic:'forest'}];
 C.LOC=Object.fromEntries(C.LOCS.map(l=>[l.id,l]));
 
 /* ---------- 對話素材（離線也有豐富內容） ---------- */
@@ -1026,7 +1027,7 @@ const KEYS=[
  {h:18.6,sky:['#5B5DA6','#F49A7C'],sea:'#3E6E9C',tint:'#E8A99A',haze:'#E7998A',sun:.35,star:.2},
  {h:19.8,sky:['#232F63','#6B5C93'],sea:'#27426B',tint:'#8C8BC2',haze:'#4E5288',sun:0,star:.7},
  {h:24, sky:['#0E1838','#2B3A6B'],sea:'#1D3557',tint:'#6C77B8',haze:'#2E3E70',sun:0,star:1}];
-const WX={sunny:{t:'晴天',ic:'☀️'},cloudy:{t:'多雲',ic:'⛅'},rain:{t:'下雨',ic:'🌧️'},storm:{t:'暴風雨',ic:'⛈️'},snow:{t:'下雪',ic:'❄️'}};
+const WX={sunny:{t:'晴天',ic:'sun'},cloudy:{t:'多雲',ic:'partly'},rain:{t:'下雨',ic:'rain'},storm:{t:'暴風雨',ic:'storm'},snow:{t:'下雪',ic:'snow'}};
 const Env={WX,t:0,h:12,phase:'day',wid:'sunny',pal:null,ver:0,wind:.3,
  now(){return new Date(Date.now()+(OC.S?OC.S.world.timeOffset||0:0))},
  hourOf(d){return d.getHours()+d.getMinutes()/60+d.getSeconds()/3600},
@@ -1653,6 +1654,7 @@ function drawEmote(ctx,a,x,y,s,t){const e=a.emote;const k=Math.min(1,e.t/.25),po
   case'gloom':ctx.strokeStyle='#7F8EB2';ctx.lineWidth=Math.max(1,sz*.12);for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(x-sz*.5+i*sz*.5,y-sz*.6);ctx.lineTo(x-sz*.5+i*sz*.5,y+sz*.2);ctx.stroke()}break;
   case'sick':ctx.fillStyle='#9DB07A';ctx.beginPath();for(let i=0;i<3;i++){ctx.moveTo(x+i*sz*.4,y);ctx.arc(x+i*sz*.4-sz*.2,y-i*sz*.3+bob,sz*.18,0,TAU)}ctx.fill();break;
   case'idea':ctx.fillStyle='#FFD86B';ctx.beginPath();ctx.arc(x,y+bob,sz*.55,0,TAU);ctx.fill();ctx.fillStyle='#D9B24A';ctx.fillRect(x-sz*.22,y+bob+sz*.45,sz*.44,sz*.3);break;
+  case'dizzy':{const cx=x-s*.34,cy=y+s*.05;for(let i=0;i<3;i++){const an=t*4+i*2.09,px=cx+Math.cos(an)*s*.32,py=cy+Math.sin(an)*s*.09;ctx.globalAlpha=fade*(.6+.4*Math.sin(an));ctx.fillStyle=i%2?'#FFD36E':'#FFF2B0';star4(ctx,px,py,s*.075)}ctx.globalAlpha=1;break}
   case'blush':ctx.fillStyle='rgba(242,124,155,.85)';for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(x-sz*.3+i*sz*.3,y+bob,sz*.08,sz*.3,.4,0,TAU);ctx.fill()}break}
  ctx.globalAlpha=1}
 function wrap(ctx,txt,maxW){const out=[];let line='';for(const ch of [...txt]){const tt=line+ch;if(ctx.measureText(tt).width>maxW&&line){out.push(line);line=ch}else line=tt}if(line)out.push(line);return out.slice(0,3)}
@@ -1729,8 +1731,11 @@ const Rig={RS,
   const spd=Math.hypot(a.vx||0,a.vz||0);const moving=spd>.05&&(st==='walk'||st==='run');
   const cad=st==='run'?3.1:Q.walk==='tiptoe'?3:Q.walk==='shuffle'?1.6:2.2;
   if(moving)A.step+=dt*Math.PI*2*cad*U.clamp(spd/(st==='run'?2.6:1.1),.6,1.5);else A.step=U.approach(A.step,Math.round(A.step/Math.PI)*Math.PI,10,dt);
-  /* 轉身：彈簧追向朝向（穿過 0 時有輕微擠壓） */
-  U.spring(A.flip,a.facing||1,dt,260,.82);
+  /* 轉身：0.2 秒的緩動半轉（cos 曲線），配合小跳躍與身體擠壓，視覺上是「轉過去」而不是紙片翻面 */
+  const want=a.facing||1;if(A.f0==null)A.f0=want;
+  if(want!==A.f0&&!A.turn)A.turn={t:0,from:A.f0,to:want};
+  if(A.turn){A.turn.t+=dt;const u=Math.min(1,A.turn.t/.2);A.flip.x=A.turn.from*Math.cos(Math.PI*U.ease.inOut(u));A.turnK=Math.sin(Math.PI*u);if(u>=1){A.f0=A.turn.to;A.flip.x=A.turn.to;A.turn=null;A.turnK=0;if(want!==A.f0)A.turn={t:0,from:A.f0,to:want}}}
+  else{A.flip.x=A.f0;A.turnK=0}
   /* 擠壓伸展：外部觸發 a.squash(v) */
   U.spring(A.sq,1,dt,200,.38);
   /* 視線：偶爾左右看看 */
@@ -1751,7 +1756,9 @@ const Rig={RS,
    case'cheer':hyT=-4;tailAmp=24;tailSpd=5;break;
    case'talk':hyT+=Math.max(0,Math.sin(A.t*7))*2;tailAmp=12;tailSpd=2;break;
    case'look':htT=a.lookAt!=null?a.lookAt*10:Math.sin(A.t*.8)*10;break;
-   case'stretch':hyT=-6;htT=-6;tailBase=20;tailAmp=4;break}
+   case'stretch':hyT=-6;htT=-6;tailBase=20;tailAmp=4;break;
+   case'fall':hyT=-7;tailAmp=26;tailSpd=6;htT=Math.sin(A.t*9)*6;break;
+   case'dizzy':hyT=4+Math.sin(A.t*3)*2;htT=Math.sin(A.t*4.2)*12;hxT=Math.sin(A.t*2.1)*6;tailAmp=8;tailSpd=1.4;tailBase=-12;break}
   if(a.sick){tailBase-=10;tailAmp*=.5;hyT+=3}
   if(a.mood==='happy'||a.mood==='excited'||a.mood==='loved'){tailAmp*=1.25;tailSpd*=1.25}
   U.spring(A.hy,hyT,dt,140,.55);U.spring(A.hx,hxT,dt,90,.7);U.spring(A.ht,htT,dt,110,.6);U.spring(A.lean,leanT,dt,80,.75);
@@ -1763,7 +1770,7 @@ const Rig={RS,
   if(A.blink>0&&!['wow','joy'].includes(a.face))return'blink';
   if(A.talkT>0&&Math.sin(A.talkT*20)>0)return a.face==='joy'?'joyTalk':'talk';
   if(a.face)return a.face;
-  if(st==='pet')return'joy';if(st==='held')return'wow';if(st==='angry'||a.mood==='angry')return'angry';if(a.sick||a.mood==='sad')return'worry';if(a.mood==='happy'||a.mood==='loved')return Math.sin(A.t*.3)>.6?'soft':'neutral';return'neutral'},
+  if(st==='pet')return'joy';if(st==='held'||st==='fall')return'wow';if(st==='dizzy')return'neutral';if(st==='angry'||a.mood==='angry')return'angry';if(a.sick||a.mood==='sad')return'worry';if(a.mood==='happy'||a.mood==='loved')return Math.sin(A.t*.3)>.6?'soft':'neutral';return'neutral'},
 
  /* =========== 繪製 =========== */
  draw(ctx,a,sx,sy,s,dt){const r=this.get(a.c);const A=this.anim(a,dt);const scale=(a.c.scale||1)*(a.sizeK||1);
@@ -1772,13 +1779,14 @@ const Rig={RS,
   const brk=Math.sin(A.br)*(a.pose==='sleep'?.03:.015);
   const sq=A.sq.x;let sxk=1/Math.sqrt(Math.max(.4,sq)),syk=sq;
   if(a.pose==='sleep'){sxk*=a.c.quirks.sleep==='starfish'?1.16:1.1;syk*=.8}else if(a.pose==='sit'){sxk*=1.04;syk*=.9}else if(a.pose==='held'){syk*=1.08;sxk*=.95}
-  const fl=A.flip.x;const fx=Math.sign(fl||1)*Math.max(.3,Math.min(1,Math.abs(fl)));const turnSq=1+(1-Math.abs(fx))*.08;
+  const fl=A.flip.x;const fx=Math.sign(fl||1)*Math.max(.1,Math.min(1,Math.abs(fl)));const turnSq=1+(A.turnK||0)*.05;const turnHop=(A.turnK||0)*5;
   const walkBob=(a.pose==='walk'||a.pose==='run')?-Math.abs(Math.sin(A.step))*(a.c.quirks.walk==='bouncy'?7:a.c.quirks.walk==='shuffle'?1.5:3.5):0;
   ctx.save();ctx.translate(sx,sy);
   if(a.alpha!=null&&a.alpha<1)ctx.globalAlpha=Math.max(0,a.alpha);
-  const rot=(A.lean.x+(a.rot||0))*Math.PI/180*(a.pose==='sleep'?0:1)+(a.c.quirks.walk==='sway'&&a.pose==='walk'?Math.sin(A.step)*.05:0);
+  const wob=a.pose==='dizzy'?Math.sin(A.t*3.1)*7:0;
+  const rot=(A.lean.x+(a.rot||0)+wob)*Math.PI/180*(a.pose==='sleep'?0:1)+(a.c.quirks.walk==='sway'&&a.pose==='walk'?Math.sin(A.step)*.05:0);
   ctx.rotate(rot);ctx.scale(fx*sxk*(1+brk*.4),syk*(1-brk*.15)*turnSq);
-  ctx.translate(0,walkBob*k);
+  ctx.translate(0,(walkBob-turnHop)*k);
   if(r.kind==='image'){const I=r.image;const h=1.45*s*scale,w=h*I.w/I.h;const by=Math.sin(A.br)*.01*h;
    ctx.drawImage(I.cv,-w/2,-h+by,w,h);ctx.restore();a.hitW=w*.8;a.hitH=h;a.headOff=0;return}
   const L=r.L,P=r.piv;
@@ -1801,6 +1809,9 @@ const Rig={RS,
   /* 手上的東西（吃東西、玩具） */
   if(a.hold){ctx.save();ctx.scale(1/fx,1);const hs=Math.max(10,s*.32*scale);ctx.font=`${hs|0}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
    const bite=a.holdK??1;ctx.globalAlpha*=Math.min(1,bite*3);ctx.translate(0,-(FOOT_Y-150)*k);ctx.scale(.5+bite*.5,.5+bite*.5);ctx.fillText(a.hold,0,0);ctx.restore()}
+  /* 頭暈：螺旋眼 */
+  if(a.pose==='dizzy'){const col=a.c.look.body||'#F4E8D7';for(const ex of [81,159]){const x=(ex-CX)*k,y=(143-FOOT_Y)*k;ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(x,y,15*k,13*k,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#6B5A72';ctx.lineWidth=Math.max(1,2.4*k);ctx.lineCap='round';ctx.beginPath();for(let i=0;i<=40;i++){const t=i/40*Math.PI*4.2+A.t*7*(ex<120?1:-1);const r=1+i/40*10.5;const px=x+Math.cos(t)*r*k,py=y+Math.sin(t)*r*k*.9;i?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.stroke()}}
   ctx.restore();
   /* 生病：鼻水泡泡／頭上烏雲由 overlay 處理；害羞紅暈 */
   if(a.blushK>0){ctx.globalAlpha=Math.min(1,a.blushK)*.5;ctx.fillStyle='#F27C9B';ctx.beginPath();ctx.ellipse(-45*k+hx,(152-FOOT_Y)*k+hy,14*k,6*k,0,0,Math.PI*2);ctx.ellipse(45*k+hx,(152-FOOT_Y)*k+hy,14*k,6*k,0,0,Math.PI*2);ctx.fill()}
@@ -1876,9 +1887,13 @@ class Agent{constructor(c){this.c=c;this.isActor=true;this.id=c.id;this.y=0;this
  feel(k,life=1.6){this.emote={k,t:0,life}}
  squash(v=.82){if(this.an)this.an.sq.x=v,this.an.sq.v=0}
  hop(h=1.6){if(this.y<=.001){this.vy=h;this.squash(.86)}}
- busy(){return !!(this.held||this.petting||this.inter||(this.task&&this.task.lock))}}
-Agent.prototype.update=function(dt){/* 跳躍物理 */
- if(this.y>0||this.vy>0){this.vy-=9.8*dt;this.y+=this.vy*dt;if(this.y<=0){this.y=0;if(this.vy<-1.2){this.squash(U.clamp(1+this.vy*.05,.72,.95));if(OC.R.sc&&OC.R.sc.id===this.loc)OC.Fx.dust(this.x,this.z,3)}this.vy=0}}
+ busy(){return !!(this.held||this.petting||this.inter||(this.task&&this.task.lock)||this.y>.05)}}
+Agent.prototype.update=function(dt){/* 跳躍、拋出物理（被抱著時懸在空中、輕輕擺盪） */
+ if(this.held){this.y+=(.9-this.y)*Math.min(1,dt*10);const sw=this.held.sw;sw.v+=(-sw.x*60-sw.v*4)*dt;sw.x+=sw.v*dt*.06;this.rot=U.clamp(sw.x,-28,28)}
+ else{if(this.rot)this.rot*=Math.pow(.02,dt);
+ if(this.y>0||this.vy>0){this.peak=Math.max(this.peak||0,this.y);this.vy-=9.8*dt;this.y+=this.vy*dt;if(this.tvx){this.x+=this.tvx*dt;this.tvx*=Math.pow(.6,dt);const b=OC.Scenes.get(this.loc).bounds;this.x=U.clamp(this.x,b[0],b[2])}
+  if(this.y<=0){this.y=0;const v=this.vy;if(v<-1.2){this.squash(U.clamp(1+v*.05,.62,.95));if(OC.R.sc&&OC.R.sc.id===this.loc)OC.Fx.dust(this.x,this.z,v<-5?8:3);if(v<-5)OC.R.cam.shake=.12}this.vy=0;
+   if(this.pose==='fall'){OC.Play.land(this,this.peak||0)}this.peak=0}}}
  if(this.bubble){this.bubble.t+=dt;if(this.bubble.t>this.bubble.life)this.bubble=null}
  if(this.emote){this.emote.t+=dt;if(this.emote.t>this.emote.life)this.emote=null}
  if(this.nameT>0)this.nameT-=dt;if(this.blushK>0)this.blushK-=dt*.4};
@@ -2032,7 +2047,7 @@ const Sim={agents:new Map(),acc:0,t:0,
   if(this.visible(a)&&Math.random()<.4)a.say(Chars.say(c,U.pick([`我去${C.LOC[loc].t}一下～`,`出發去${C.LOC[loc].t}！`,'我先走囉。'])))},
  sendTo(a,loc){/* 玩家指示：帶夥伴去某地 */const T={def:{id:'go',t:'前往',gain:{},dur:[3,6],pose:'stand',loc:[loc]},loc,t:0,dur:4,phase:'go'};a.task=T;if(loc!==a.c.loc)this.travel(a,loc);else this.target(a,T)},
  /* ================= 移動（避障、互相讓路） ================= */
- move(a,dt){const sc=scene(a.loc);if(a.held||a.away)return;
+ move(a,dt){const sc=scene(a.loc);if(a.held||a.away||a.y>.05||a.dizzy)return;
   if(!a.goal){a.vx=U.approach(a.vx,0,10,dt);a.vz=U.approach(a.vz,0,10,dt);if(Math.abs(a.vx)<.02&&(a.pose==='walk'||a.pose==='run'))a.pose=a.task&&a.task.phase==='do'?a.pose:'stand';return}
   const c=a.c;const dx=a.goal.x-a.x,dz=a.goal.z-a.z,dist=Math.hypot(dx,dz);
   if(dist<.12){a.goal=null;a.stuck=0;return}
@@ -2044,7 +2059,8 @@ const Sim={agents:new Map(),acc:0,t:0,
   for(const o of this.agents.values()){if(o===a||o.loc!==a.loc||o.away)continue;const ex=nx-o.x,ez=nz-o.z,d2=ex*ex+ez*ez;if(OC.Social&&d2<5&&d2>1e-4&&OC.Social.rel(c.id,o.id).broken){const d=Math.sqrt(d2);nx+=ex/d*sp*dt*.6;nz+=ez/d*sp*dt*.6;continue}if(d2<.62&&d2>1e-4){const d=Math.sqrt(d2);nx+=ex/d*(.79-d)*.22;nz+=ez/d*(.79-d)*.22}}
   if(!ok||!sc.walk(nx,nz)){a.stuck+=dt;if(a.stuck>1.4){a.goal=null;a.stuck=0}return}
   a.stuck=Math.max(0,a.stuck-dt);const vx=(nx-a.x)/dt,vz=(nz-a.z)/dt;a.vx=U.approach(a.vx,vx,12,dt);a.vz=U.approach(a.vz,vz,12,dt);a.x=nx;a.z=nz;
-  if(Math.abs(a.vx)>.08)a.facing=a.vx>0?1:-1;if(a.pose!=='walk'&&a.pose!=='run')a.pose=a.goal.fast?'run':'walk';
+  /* 轉向遲滯：持續往同一方向移動一小段時間才轉身，避免來回抖動翻面 */
+  const want=a.vx>0?1:-1;if(Math.abs(a.vx)>.28&&want!==a.facing){a.ft=(a.ft||0)+dt;if(a.ft>.14){a.facing=want;a.ft=0}}else a.ft=0;if(a.pose!=='walk'&&a.pose!=='run')a.pose=a.goal.fast?'run':'walk';
   if(a.pose==='run'&&Math.random()<dt*3&&this.visible(a))OC.Fx.dust(a.x,a.z,1)},
  visible(a){return OC.R.sc&&OC.R.sc.id===a.loc&&!a.away},
 
@@ -2323,11 +2339,27 @@ const Play={
   if(it.cat==='seed'){OC.UI.toast('種子可以在家園的花圃種下','info');return false}
   return false},
  timed(a,s,fn){a.lockT=s;const T={def:{id:'_p',pose:a.pose,gain:{},dur:[s,s]},lock:1,phase:'hold'};a.task=T;setTimeout(()=>{if(a.task===T)a.task=null;try{fn()}catch(e){console.error(e)}OC.Store.save()},s*1000)},
- /* ---------- 抱起與放下 ---------- */
- pick(a){if(a.task)OC.Sim.finish(a,false);if(a.inter)OC.Social.end(a.inter);a.held=true;a.pose='held';a.goal=null;a.y=.5;U.buzz(10);
-  const c=a.c;a.say(Chars.line(c,'drop')||U.pick(C.LINES.wake),{life:1.6});if(Chars.has(c,'timid'))a.feel('sweat')},
- drop(a,x,z){a.held=false;const sc=OC.Scenes.get(a.loc);if(!sc.walk(x,z)){const p=sc.near(x,z,2);x=p.x;z=p.z}a.x=x;a.z=z;a.pose='stand';a.vy=-.5;a.y=Math.max(a.y,.6);U.buzz(8);
-  if(Math.random()<.4)a.say(U.pick(['咚！','到了～','呼…']),{life:1.4})},
+ /* ---------- 抱起、晃動、甩、拋出（太用力或太高會頭暈） ---------- */
+ pick(a){if(a.task)OC.Sim.finish(a,false);if(a.inter)OC.Social.end(a.inter);a.held={shake:0,lastDx:0,hist:[],sw:{x:0,v:0}};a.pose='held';a.goal=null;a.vy=0;a.dizzy=0;U.buzz(10);
+  const c=a.c;a.say(Chars.line(c,'drop')||U.pick(['哇！要去哪裡？','咦咦咦？','放、放我下來啦～']),{life:1.6});if(Chars.has(c,'timid'))a.feel('sweat')},
+ holdMove(a,p,prev){const H=a.held;if(!H)return;const cam=OC.R.cam;const s=cam.p(a.x,0,a.z).s;const w=cam.unproject(p.x,p.y+s*1.15);const b=OC.R.sc.bounds;a.x=U.clamp(w.x,b[0],b[2]);a.z=U.clamp(w.z,b[1],b[3]);
+  const dx=p.x-prev.x,dy=p.y-prev.y,now=performance.now();H.hist.push({x:p.x,y:p.y,t:now});while(H.hist.length&&now-H.hist[0].t>140)H.hist.shift();
+  /* 方向急轉計為「甩」；左右擺盪 */
+  if(Math.abs(dx)>7&&Math.sign(dx)!==Math.sign(H.lastDx)&&H.lastDx){H.shake+=1;U.buzz(4);if(H.shake===5)a.say(U.pick(['不要甩啦～','頭、頭要暈了…','哇啊啊啊——']),{life:1.4});a.face='wow'}
+  if(Math.abs(dx)>2)H.lastDx=dx;H.sw.v-=dx*.9;a.facing=dx>2?1:dx<-2?-1:a.facing},
+ /* 放開：依手指速度拋出 */
+ release(a){const H=a.held;if(!H)return;a.held=null;a.face=null;const cam=OC.R.cam,h=H.hist;let vx=0,vy=0;
+  if(h.length>1){const A=h[0],B=h[h.length-1],dt=Math.max(.016,(B.t-A.t)/1000);vx=(B.x-A.x)/dt;vy=(B.y-A.y)/dt}
+  const s=Math.max(10,cam.p(a.x,0,a.z).s);a.tvx=U.clamp(vx/s,-6,6)*.55;a.tvz=0;a.vy=U.clamp(-vy/s*.6,-2,9);a.y=Math.max(a.y,.9);a.pose='fall';a.shakeN=H.shake;
+  a.fallFrom=a.y;U.buzz(8)},
+ /* 落地（由 Agent.update 呼叫） */
+ land(a,peak){const sc=OC.Scenes.get(a.loc);if(!sc.walk(a.x,a.z)){const p=sc.near(a.x,a.z,2);a.x=p.x;a.z=p.z}a.tvx=a.tvz=0;a.pose='stand';
+  const dizzy=peak>1.8||(a.shakeN||0)>=5;a.shakeN=0;
+  if(dizzy){this.dizzy(a,peak>3?5:3.6)}else if(peak>1.2){a.say(U.pick(['咚！','到了～','呼…嚇我一跳。']),{life:1.4})}},
+ dizzy(a,sec){a.dizzy=sec;a.task={def:{id:'_dizzy',pose:'dizzy',gain:{},dur:[sec,sec]},lock:1,phase:'hold'};a.pose='dizzy';a.feel('dizzy',sec);
+  a.say(U.pick(['頭好暈～','眼睛在轉圈圈…','世界在轉…']),{life:2.2});a.c.emo.joy=Math.max(0,a.c.emo.joy-.1);OC.Sim.remember(a.c,'dizzy','被甩得頭昏眼花',-.2);
+  setTimeout(()=>{if(a.task&&a.task.def.id==='_dizzy'){a.task=null;a.pose='stand';a.dizzy=0;a.say(U.pick(['呼…終於不暈了。','下次輕一點啦！']),{life:2});a.squash(.9)}},sec*1000)},
+ drop(a,x,z){this.release(a)},
  /* ---------- 呼喚 ---------- */
  call(a,x,z){if(a.task&&a.task.def.pose==='sleep'){OC.Sim.finish(a,false);a.say(Chars.line(a.c,'wake')||U.pick(C.LINES.wake));a.feel('!')}else if(a.task)OC.Sim.finish(a,false);
   const sc=OC.Scenes.get(a.loc);const p=x!=null?(sc.ok(x,z)?{x,z}:sc.near(x,z,1.2)):sc.near(OC.R.cam.tx,OC.R.cam.tz+1,1.5);a.goal={x:p.x,z:p.z,fast:1};a.feel('!',1.2);
@@ -2893,51 +2925,63 @@ const Loop={timeScale:1,raf:0,last:0,acc:0,paused:false,renderOn:true,fpsN:0,fps
   if(this.renderOn){try{R.frame(dt)}catch(e){console.error('[render]',e);this.err=(this.err||0)+1}}
   OC.UI&&OC.UI.frame&&OC.UI.frame(dt)}};
 
-/* ---------- 相機：跟隨、平移、縮放，全部有慣性 ---------- */
-const Cam={follow:true,focus:null,goal:{tx:0,tz:0,D:16},vel:{x:0,z:0},
- set(tx,tz,D,instant){this.goal={tx,tz,D:D??this.goal.D};if(instant){R.cam.tx=tx;R.cam.tz=tz;R.cam.D=this.goal.D}},
+/* ---------- 相機：平移、縮放、跟隨（v4.1 重寫：以螢幕位移換算，不會跳動） ---------- */
+const Cam={follow:true,focus:null,goal:{tx:0,tz:0,D:16},vel:{x:0,z:0},lock:0,
+ set(tx,tz,D,instant){this.goal={tx,tz,D:D??this.goal.D};this.vel.x=this.vel.z=0;if(instant){R.cam.tx=tx;R.cam.tz=tz;R.cam.D=this.goal.D}},
  limits(){const sc=R.sc;return sc.kind==='room'?{D:[7,13],b:[-1.6,-1,1.6,1.4]}:{D:[9,30],b:[sc.bounds[0]+2,sc.bounds[1]+2,sc.bounds[2]-2,sc.bounds[3]-1]}},
- update(dt){const c=R.cam,L=this.limits();
-  if(this.follow&&this.focus&&!this.focus.away&&this.focus.loc===R.sc.id&&!Input.drag){const f=this.focus;const dx=f.x-this.goal.tx,dz=f.z-this.goal.tz;const dead=OC.Store.perf().fps<40?1.6:.9;
-   if(Math.abs(dx)>dead)this.goal.tx+=dx-Math.sign(dx)*dead;if(Math.abs(dz)>dead*.7)this.goal.tz+=dz-Math.sign(dz)*dead*.7}
-  if(!Input.drag&&(this.vel.x||this.vel.z)){this.goal.tx+=this.vel.x*dt;this.goal.tz+=this.vel.z*dt;this.vel.x*=Math.pow(.04,dt);this.vel.z*=Math.pow(.04,dt);if(Math.hypot(this.vel.x,this.vel.z)<.05)this.vel.x=this.vel.z=0}
-  this.goal.D=U.clamp(this.goal.D,L.D[0],L.D[1]);this.goal.tx=U.clamp(this.goal.tx,L.b[0],L.b[2]);this.goal.tz=U.clamp(this.goal.tz,L.b[1],L.b[3]);
-  const k=Input.drag?1:1-Math.exp(-dt*(Input.pinch?14:5));const nx=U.lerp(c.tx,this.goal.tx,k),nz=U.lerp(c.tz,this.goal.tz,k),nD=U.lerp(c.D,this.goal.D,k);
-  /* 小於 0.002 的移動直接忽略：避免地面快取每格重畫 */
-  if(Math.abs(nx-c.tx)>.002)c.tx=nx;else c.tx=this.goal.tx;if(Math.abs(nz-c.tz)>.002)c.tz=nz;else c.tz=this.goal.tz;if(Math.abs(nD-c.D)>.003)c.D=nD;else c.D=this.goal.D}};
+ /* 目前地面上每公尺對應幾像素（x、z 各自） */
+ scale(){const c=R.cam;c.update();const a=c.p(c.tx,0,c.tz),bx=c.p(c.tx+1,0,c.tz),bz=c.p(c.tx,0,c.tz+1);return{x:Math.max(4,bx.x-a.x),z:Math.max(2,bz.y-a.y)}},
+ pan(dx,dy){const k=this.scale();this.goal.tx-=dx/k.x;this.goal.tz-=dy/k.z;this.clamp();R.cam.tx=this.goal.tx;R.cam.tz=this.goal.tz},
+ clamp(){const L=this.limits();this.goal.D=U.clamp(this.goal.D,L.D[0],L.D[1]);this.goal.tx=U.clamp(this.goal.tx,L.b[0],L.b[2]);this.goal.tz=U.clamp(this.goal.tz,L.b[1],L.b[3])},
+ followA(a){this.focus=a;this.follow=!!a;OC.UI&&OC.UI.followChanged&&OC.UI.followChanged()},
+ update(dt){const c=R.cam;
+  if(this.follow&&this.focus&&!this.focus.away&&this.focus.loc===R.sc.id&&!Input.drag&&!Input.pinch){const f=this.focus;
+   /* 連續平滑跟隨（沒有死區跳格） */const k=1-Math.exp(-dt*2.6);this.goal.tx+=(f.x-this.goal.tx)*k;this.goal.tz+=(f.z+.6-this.goal.tz)*k}
+  if(!Input.drag&&(this.vel.x||this.vel.z)){this.goal.tx+=this.vel.x*dt;this.goal.tz+=this.vel.z*dt;const d=Math.pow(.02,dt);this.vel.x*=d;this.vel.z*=d;if(Math.hypot(this.vel.x,this.vel.z)<.03)this.vel.x=this.vel.z=0}
+  this.clamp();
+  const k=Input.drag?1:1-Math.exp(-dt*7);c.tx+=(this.goal.tx-c.tx)*k;c.tz+=(this.goal.tz-c.tz)*k;c.D+=(this.goal.D-c.D)*(1-Math.exp(-dt*9));
+  if(Math.abs(c.tx-this.goal.tx)<.0015)c.tx=this.goal.tx;if(Math.abs(c.tz-this.goal.tz)<.0015)c.tz=this.goal.tz;if(Math.abs(c.D-this.goal.D)<.002)c.D=this.goal.D}};
 
 /* ---------- 觸控輸入 ---------- */
 const Input={ptrs:new Map(),drag:null,pinch:null,press:null,
  init(cv){this.cv=cv;cv.addEventListener('pointerdown',e=>this.down(e));window.addEventListener('pointermove',e=>this.move(e),{passive:false});window.addEventListener('pointerup',e=>this.up(e));window.addEventListener('pointercancel',e=>this.up(e,true));
-  cv.addEventListener('wheel',e=>{e.preventDefault();Cam.goal.D*=Math.exp(e.deltaY*.0012)},{passive:false});cv.addEventListener('contextmenu',e=>e.preventDefault())},
+  cv.addEventListener('wheel',e=>{e.preventDefault();Cam.goal.D*=Math.exp(e.deltaY*.0012);Cam.clamp()},{passive:false});cv.addEventListener('contextmenu',e=>e.preventDefault())},
  pos(e){const r=this.cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}},
- hitActor(x,y){let best=null;for(const a of R.actors){if(a.visible===false||!a.ss||a.away)continue;const w=(a.hitW||a.ss*.8)*.55,h=a.hitH||a.ss;if(x>a.sx-w&&x<a.sx+w&&y>a.sy-h*.95&&y<a.sy+6){if(!best||a.z>best.z)best=a}}return best},
- hitObj(x,y){let best=null;for(const p of R.pick){if(x>p.x+p.w*.15&&x<p.x+p.w*.85&&y>p.y+p.h*.15&&y<p.y+p.h){if(!best||p.o.z>best.o.z)best=p}}return best&&best.o},
- down(e){if(OC.UI&&OC.UI.blockWorld)return;const p=this.pos(e);this.ptrs.set(e.pointerId,p);try{this.cv.setPointerCapture(e.pointerId)}catch(_){}
-  if(this.ptrs.size===2){const [a,b]=[...this.ptrs.values()];this.pinch={d:Math.hypot(a.x-b.x,a.y-b.y),D:Cam.goal.D};this.cancelPress();this.drag=null;return}
+ /* 寬鬆的點擊範圍：手指比滑鼠粗，角色外圍多留一些 */
+ hitActor(x,y,pad=14){let best=null,bd=1e9;for(const a of R.actors){if(a.visible===false||!a.ss||a.away)continue;const w=(a.hitW||a.ss*.8)*.55+pad,h=(a.hitH||a.ss)+pad;
+   if(x>a.sx-w&&x<a.sx+w&&y>a.sy-h&&y<a.sy+pad){const d=Math.hypot(x-a.sx,y-(a.sy-h*.45));if(d<bd){bd=d;best=a}}}return best},
+ hitObj(x,y){let best=null;for(const p of R.pick){if(x>p.x+p.w*.12&&x<p.x+p.w*.88&&y>p.y+p.h*.12&&y<p.y+p.h){if(!best||p.o.z>best.o.z)best=p}}return best&&best.o},
+ down(e){if(OC.UI&&OC.UI.blockWorld)return;if(OC.Cine&&OC.Cine.on){OC.Cine.skip();return}const p=this.pos(e);this.ptrs.set(e.pointerId,p);try{this.cv.setPointerCapture(e.pointerId)}catch(_){}
+  OC.UI&&OC.UI.closeFloating&&OC.UI.closeFloating();
+  if(this.ptrs.size===2){const [a,b]=[...this.ptrs.values()];this.pinch={d:Math.hypot(a.x-b.x,a.y-b.y),D:Cam.goal.D,mx:(a.x+b.x)/2,my:(a.y+b.y)/2};this.cancelPress();this.drag=null;return}
   if(OC.UI&&OC.UI.placing){OC.UI.placing.down(p);return}
   const a=this.hitActor(p.x,p.y);
-  if(a){this.press={a,x:p.x,y:p.y,t:performance.now(),mode:null,lx:p.x,ly:p.y,id:e.pointerId};this.press.timer=setTimeout(()=>{if(this.press&&!this.press.mode){this.press.mode='hold';OC.Play.pick(a);Cam.focus=a;OC.UI&&OC.UI.select(a)}},430);return}
-  this.drag={x:p.x,y:p.y,sx:p.x,sy:p.y,t:performance.now(),moved:0,w0:R.cam.unproject(p.x,p.y),tx:Cam.goal.tx,tz:Cam.goal.tz};Cam.vel.x=Cam.vel.z=0},
+  if(a){this.press={a,x:p.x,y:p.y,t:performance.now(),mode:null,lx:p.x,ly:p.y,id:e.pointerId};this.press.timer=setTimeout(()=>{if(this.press&&!this.press.mode){this.press.mode='hold';OC.Play.pick(a);OC.UI&&OC.UI.select(a,true)}},380);return}
+  this.drag={x:p.x,y:p.y,sx:p.x,sy:p.y,t:performance.now(),t0:performance.now(),moved:0};Cam.vel.x=Cam.vel.z=0},
  move(e){if(!this.ptrs.has(e.pointerId))return;const p=this.pos(e);const prev=this.ptrs.get(e.pointerId);this.ptrs.set(e.pointerId,p);
-  if(this.pinch&&this.ptrs.size>=2){const [a,b]=[...this.ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);Cam.goal.D=this.pinch.D*this.pinch.d/Math.max(20,d);return}
+  if(this.pinch&&this.ptrs.size>=2){const [a,b]=[...this.ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);Cam.goal.D=U.clamp(this.pinch.D*this.pinch.d/Math.max(20,d),...Cam.limits().D);
+   /* 雙指同時拖動也能平移 */const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;Cam.pan(mx-this.pinch.mx,my-this.pinch.my);this.pinch.mx=mx;this.pinch.my=my;if(Cam.follow){Cam.follow=false;OC.UI&&OC.UI.followChanged()}return}
   if(OC.UI&&OC.UI.placing){OC.UI.placing.move(p);return}
   const P=this.press;if(P&&P.id===e.pointerId){const dx=p.x-P.x,dy=p.y-P.y;
-   if(!P.mode&&Math.hypot(dx,dy)>9){clearTimeout(P.timer);P.mode='pet';OC.Play.petStart(P.a);Cam.focus=P.a;OC.UI&&OC.UI.select(P.a,true)}
+   if(!P.mode&&Math.hypot(dx,dy)>10){clearTimeout(P.timer);
+    /* 上下為主 → 摸摸；明顯橫向拖曳 → 抱起移動 */
+    if(Math.abs(dy)>=Math.abs(dx)*.7){P.mode='pet';OC.Play.petStart(P.a);OC.UI&&OC.UI.select(P.a,true)}else{P.mode='hold';OC.Play.pick(P.a);OC.UI&&OC.UI.select(P.a,true)}}
    if(P.mode==='pet'){OC.Play.petMove(P.a,p.y-P.ly,p.x-P.lx);P.lx=p.x;P.ly=p.y;e.preventDefault()}
-   else if(P.mode==='hold'){const w=R.cam.unproject(p.x,p.y+R.cam.p(P.a.x,0,P.a.z).s*.5);P.a.x=w.x;P.a.z=w.z;P.a.y=.45+Math.sin(performance.now()/180)*.03;P.a.facing=(p.x-prev.x)>1?1:(p.x-prev.x)<-1?-1:P.a.facing;e.preventDefault()}return}
-  const D=this.drag;if(D){D.moved=Math.max(D.moved,Math.hypot(p.x-D.sx,p.y-D.sy));if(D.moved<6)return;const w=R.cam.unproject(p.x,p.y);const dx=w.x-D.w0.x,dz=w.z-D.w0.z;
-   Cam.goal.tx-=dx;Cam.goal.tz-=dz;R.cam.tx=Cam.goal.tx;R.cam.tz=Cam.goal.tz;const now=performance.now(),dt=Math.max(1,now-D.t)/1000;Cam.vel.x=-dx/dt*.6;Cam.vel.z=-dz/dt*.6;D.t=now;D.w0=R.cam.unproject(p.x,p.y);Cam.follow=false;if(D.moved>40)U.emit('tut','pan');OC.UI&&OC.UI.followChanged&&OC.UI.followChanged()}},
- cancelPress(){if(this.press){clearTimeout(this.press.timer);if(this.press.mode==='pet')OC.Play.petEnd(this.press.a);if(this.press.mode==='hold'){const a=this.press.a;OC.Play.drop(a,a.x,a.z)}this.press=null}},
- up(e,cancel){if(!this.ptrs.has(e.pointerId))return;const p=this.ptrs.get(e.pointerId);this.ptrs.delete(e.pointerId);if(this.ptrs.size<2)this.pinch=null;
+   else if(P.mode==='hold'){OC.Play.holdMove(P.a,p,prev);e.preventDefault()}return}
+  const D=this.drag;if(D){D.moved=Math.max(D.moved,Math.hypot(p.x-D.sx,p.y-D.sy));if(D.moved<8)return;const dx=p.x-prev.x,dy=p.y-prev.y;Cam.pan(dx,dy);
+   const now=performance.now(),dt=Math.max(8,now-D.t)/1000,k=Cam.scale();Cam.vel.x=U.lerp(Cam.vel.x,-dx/k.x/dt,.5);Cam.vel.z=U.lerp(Cam.vel.z,-dy/k.z/dt,.5);D.t=now;
+   if(Cam.follow){Cam.follow=false;OC.UI&&OC.UI.followChanged&&OC.UI.followChanged()}if(D.moved>40)U.emit('tut','pan')}},
+ cancelPress(){if(this.press){clearTimeout(this.press.timer);if(this.press.mode==='pet')OC.Play.petEnd(this.press.a);if(this.press.mode==='hold')OC.Play.release(this.press.a);this.press=null}},
+ up(e,cancel){if(!this.ptrs.has(e.pointerId))return;const p=this.ptrs.get(e.pointerId);this.ptrs.delete(e.pointerId);if(this.ptrs.size<2&&this.pinch){this.pinch=null;this.drag=null;return}
   if(OC.UI&&OC.UI.placing){OC.UI.placing.up(p);return}
-  const P=this.press;if(P&&P.id===e.pointerId){clearTimeout(P.timer);if(!P.mode&&!cancel){Cam.focus=P.a;Cam.follow=true;OC.UI&&OC.UI.select(P.a);OC.UI&&OC.UI.actorTap(P.a)}else this.cancelPress();this.press=null;return}
-  const D=this.drag;if(D){this.drag=null;if(D.moved<6&&!cancel&&performance.now()-D.t<500){const o=this.hitObj(p.x,p.y);if(o)OC.UI&&OC.UI.objTap(o);else{const now=performance.now();if(this.lastTap&&now-this.lastTap<330){const w=R.cam.unproject(p.x,p.y);const a=Sim.active();if(a&&a.loc===R.sc.id)OC.Play.call(a,w.x,w.z)}this.lastTap=now}}}}};
+  const P=this.press;if(P&&P.id===e.pointerId){clearTimeout(P.timer);if(!P.mode&&!cancel){OC.UI&&OC.UI.select(P.a);OC.UI&&OC.UI.actorTap(P.a)}else this.cancelPress();this.press=null;return}
+  const D=this.drag;if(D){this.drag=null;if(performance.now()-D.t>90)Cam.vel.x=Cam.vel.z=0;
+   if(D.moved<8&&!cancel&&performance.now()-D.t0<450){const o=this.hitObj(p.x,p.y);if(o)OC.UI&&OC.UI.objTap(o);else{const now=performance.now();if(this.lastTap&&now-this.lastTap<330){const w=R.cam.unproject(p.x,p.y);const a=Sim.active();if(a&&a.loc===R.sc.id)OC.Play.call(a,w.x,w.z)}this.lastTap=now}}}}};
 
 /* ---------- 地點切換（含柔和轉場） ---------- */
 const World={go(id,{instant,focus}={}){const C=OC.Content;if(!C.LOC[id])return;OC.S.world.loc=id;if(OC.Pages&&OC.Pages.cur)OC.Pages.close();
   const doIt=()=>{R.setScene(id);Sim.refreshActors();const sc=R.sc;const a=focus||[...R.actors].find(x=>x.id===OC.S.activeId)||R.actors[0];Cam.focus=a||null;Cam.follow=!!a;
-   if(a&&sc.kind!=='room')Cam.set(a.x,a.z+.5,sc.cam.D,true);else Cam.set(sc.cam.tx,sc.cam.tz,sc.kind==='room'?sc.cam.D:19,true);OC.Quests.on('loc:'+id);U.emit('scene',id);U.emit('tut',id==='house'?'house':'map');OC.Store.save()};
+   if(a&&sc.kind!=='room')Cam.set(a.x,a.z+.6,sc.cam.D,true);else Cam.set(sc.cam.tx,sc.cam.tz,sc.kind==='room'?sc.cam.D:19,true);OC.Quests.on('loc:'+id);U.emit('scene',id);U.emit('tut',id==='house'?'house':'map');OC.Store.save()};
   if(instant||!OC.UI){doIt();return}OC.UI.fade(doIt)}};
 
 /* ---------- 前景／背景：背景時停止繪製、只在回來時補算 ---------- */
