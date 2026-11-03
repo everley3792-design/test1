@@ -46,6 +46,11 @@ D.eraser=()=>wrap('',`<path d="M8 32 27 13l13 13-11 11H15z" fill="#F7B6C2"/><pat
 D.bucket=()=>wrap('',`<path d="M10 22 24 8l14 14-14 14z" fill="#A9D3F5"/><path d="M10 22h28" stroke="#6C9DD0" stroke-width="2"/><path d="M40 26c2 3 4 6 4 8a4 4 0 0 1-8 0c0-2 2-5 4-8z" fill="#6FA8E6"/>`);
 D.undo=()=>wrap('',`<path d="M18 12 8 22l10 10" fill="none" stroke="currentColor" stroke-width="4" ${ST}/><path d="M9 22h18a11 11 0 0 1 0 22h-5" fill="none" stroke="currentColor" stroke-width="4" ${ST}/>`);
 D.redo=()=>wrap('',`<path d="M30 12l10 10-10 10" fill="none" stroke="currentColor" stroke-width="4" ${ST}/><path d="M39 22H21a11 11 0 0 0 0 22h5" fill="none" stroke="currentColor" stroke-width="4" ${ST}/>`);
+D.t_line=()=>wrap('',`<path d="M10 38 38 10" stroke="currentColor" stroke-width="4" ${ST}/><circle cx="10" cy="38" r="4" fill="#6E8BF0"/><circle cx="38" cy="10" r="4" fill="#6E8BF0"/>`);
+D.t_rect=()=>wrap('',`<rect x="9" y="11" width="30" height="26" rx="4" fill="#CFE0FF" stroke="#6E8BF0" stroke-width="3"/>`);
+D.t_ell=()=>wrap('',`<ellipse cx="24" cy="24" rx="16" ry="13" fill="#FFD9E4" stroke="#F27C9B" stroke-width="3"/>`);
+D.t_pick=()=>wrap('',`<path d="M30 8l10 10-4 4-2-2-14 14H14v-6l14-14-2-2z" fill="#9FC3EE" stroke="#5D7DE6" stroke-width="2" ${ST}/><path d="M14 34l-5 6" stroke="#5D7DE6" stroke-width="3" ${ST}/>`);
+D.t_mirror=()=>wrap('',`<path d="M24 6v36" stroke="#6E8BF0" stroke-width="2.4" stroke-dasharray="4 4"/><path d="M20 14 8 34h12zM28 14l12 20H28z" fill="#F6B8C8" stroke="#F27C9B" stroke-width="2" ${ST}/>`);
 D.layers=()=>wrap('',`<path d="M24 8 42 17 24 26 6 17z" fill="#9FC3EE"/><path d="M6 24l18 9 18-9" fill="none" stroke="#7FA7DD" stroke-width="3.4" ${ST}/><path d="M6 31l18 9 18-9" fill="none" stroke="#B4CFF2" stroke-width="3.4" ${ST}/>`);
 D.eye=()=>wrap('',`<path d="M4 24s7-12 20-12 20 12 20 12-7 12-20 12S4 24 4 24z" fill="#fff" stroke="currentColor" stroke-width="3"/><circle cx="24" cy="24" r="6" fill="currentColor"/>`);
 D.image=()=>wrap('',`<rect x="6" y="9" width="36" height="30" rx="6" fill="#BFE0F5"/><path d="M6 33l10-10 8 8 6-6 12 12v2a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6z" fill="#7FC27A"/><circle cx="32" cy="18" r="4" fill="#FFD36E"/>`);

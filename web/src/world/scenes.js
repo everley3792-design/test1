@@ -114,14 +114,14 @@ function forest(){const rng=U.rng(313);const sc=base('forest',{cam:{tx:0,tz:.5,D
  const r=finalize(sc);const w=r.walk;r.walk=(x,z)=>w(x,z)||(inside(sc.bridgeZone,x,z)&&inside(sc.walkPoly,x,z));return r}
 
 /* ================= 屋內 ================= */
-function room(){const sc=base('house',{kind:'room',sea:false,cam:{tx:0,tz:.1,D:11.5},bounds:[-3.6,-2.4,3.6,2.4]});
+function room(){const sc=base('house',{kind:'room',sea:false,cam:{tx:0,tz:.2,D:13.5},bounds:[-3.6,-2.4,3.6,2.4]});
  sc.walkPoly=[[-3.7,-2.5],[3.7,-2.5],[3.7,2.5],[-3.7,2.5]];sc.room={w:8,d:5.4,h:3};
  sc.spots={door:{x:0,z:2.3}};return finalize(sc)}
 
 const Scenes={cache:{},get(id){return this.cache[id]||(this.cache[id]=({home,plaza,beach,forest,house:room})[id]())},inside,outline,S,
  /* 房子作為擺設加入家園 */
  syncHouse(){const sc=this.get('home'),H=OC.S.world.house;sc.objs=sc.objs.filter(o=>o.type!=='house');
-  if(H&&H.placed){sc.objs.push(S('house',H.x,H.z,{style:H.style,r:0,box:[-1.7,-2.6,1.7,.15],act:'enter',name:'我的家',light:3}));sc.spots.door={x:H.x,z:H.z+.75};
+  if(H&&H.placed){sc.objs.push(S('house',H.x,H.z,{style:H.style,r:0,box:[-2,-2.9,2,.25],act:'enter',name:'我的家',light:3}));sc.spots.door={x:H.x,z:H.z+.9};
    /* 擋到房子的花草移開 */
    sc.objs=sc.objs.filter(o=>!(o.deco&&Math.abs(o.x-H.x)<2.2&&o.z<H.z+.6&&o.z>H.z-3))}
   /* 房子的碰撞為矩形 */
@@ -136,7 +136,7 @@ const Scenes={cache:{},get(id){return this.cache[id]||(this.cache[id]=({home,pla
   sc.objs.push(S('rdoor',-2.7,-2.62,{r:0,act:'exit',name:'出門',zb:-.5}))},
  syncBuilds(){const sc=this.get('home');sc.objs=sc.objs.filter(o=>o.type!=='cbuild');for(const b of (OC.S.world.builds||[])){const c=OC.Creations&&OC.Creations.get(b.cid);if(!c)continue;sc.objs.push(S('cbuild',b.x,b.z,{cid:b.cid,id:b.id,r:(c.size||3)*.38,name:c.name,creation:1}))}OC.R&&OC.R.invalidate&&OC.R.invalidate()},
  canPlaceHouse(x,z){const sc=this.get('home');if(!sc.houseZone(x,z)||!sc.houseZone(x-1.6,z)||!sc.houseZone(x+1.6,z)||!sc.houseZone(x-1.4,z-2)||!sc.houseZone(x+1.4,z-2))return false;
-  for(const o of sc.objs){if(o.type==='house'||o.deco)continue;if(o.x>x-2.4&&o.x<x+2.4&&o.z>z-3&&o.z<z+1.2)return false}
+  for(const o of sc.objs){if(o.type==='house'||o.deco)continue;if(o.x>x-2.6&&o.x<x+2.6&&o.z>z-3.2&&o.z<z+1.3)return false}
   for(const p of sc.ponds)if(inside(p.pts,x,z)||inside(p.pts,x+1.5,z))return false;return true}};
 const FR={bed:.9,table:.75,kitchen:.8,shelf:.6,lamp:.25,plant:.3,rug:0,sofa:.85,radio:.35,bath:.7,chair:.35,wardrobe:.6,desk:.6,fireplace:.7,clock:.3,bowl:.35,piano:.8,lantern:.2,flowerbed:.5};
 const FA={bed:'sleep',table:'eat',kitchen:'cook',shelf:'read',sofa:'sofa',radio:'music',bath:'bathe',plant:'water',lamp:null,rug:null,chair:'sofa',desk:'read',piano:'music',fireplace:'campfire',bowl:null,clock:null,wardrobe:null,lantern:null,flowerbed:null};

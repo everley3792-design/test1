@@ -76,9 +76,9 @@ const UI={ic,COIN,sheets:[],blockWorld:false,placing:null,
   const MAIN=[['talk','chat','聊天'],['pet','paw','摸摸'],['give','gift','給東西'],['go','walk','一起去'],[sleeping?'wake':'rest',sleeping?'sun':'moon',sleeping?'叫醒':'休息'],['profile','book','檔案']];
   const sad=c.mood==='sad'||c.health.sick;
   const TALK=[['greet','wave','打招呼'],['chat','chat','聊聊天'],['praise','star','稱讚'],['joke','sparkle','開玩笑'],['hug','heart','抱抱'],[sad?'comfort':'wish',sad?'cross':'gift',sad?'安慰':'問願望'],['back','back','返回']];
-  const list=mode==='talk'?TALK:MAIN;const R=mode==='talk'?104:96;
-  const el=U.el(`<div class="radial" role="menu"><div class="rd-name"><b>${esc(c.name)}</b><small>${esc((C.MOODS[c.mood]||{}).t||'')}${c.health.sick?' · '+C.SICK[c.health.sick].t:''}</small></div>${list.map(([k,i,t],n)=>{const an=Math.PI*(1.08+.84*n/(list.length-1));
-   return`<button class="rd-b" data-k="${k}" style="--x:${Math.cos(an)*R|0}px;--y:${Math.sin(an)*R*.92|0}px;--d:${n*25}ms"><span>${ic(i,26)}</span><small>${t}</small></button>`}).join('')}</div>`);
+  const list=mode==='talk'?TALK:MAIN;const R=mode==='talk'?132:118;
+  const el=U.el(`<div class="radial" role="menu"><div class="rd-name"><b>${esc(c.name)}</b><small>${esc((C.MOODS[c.mood]||{}).t||'')}${c.health.sick?' · '+C.SICK[c.health.sick].t:''}</small></div>${list.map(([k,i,t],n)=>{const an=Math.PI*(1+n/(list.length-1));
+   return`<button class="rd-b" data-k="${k}" style="--x:${Math.cos(an)*R|0}px;--y:${Math.sin(an)*R*.86|0}px;--d:${n*25}ms"><span>${ic(i,26)}</span><small>${t}</small></button>`}).join('')}</div>`);
   document.getElementById('app').appendChild(el);this.rd={el,a};this.placeRadial();requestAnimationFrame(()=>el.classList.add('open'));
   el.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;U.buzz(6);this.radialAct(a,b.dataset.k)}},
  placeRadial(){const r=this.rd;if(!r)return;const a=r.a;if(!a.ss)return;const x=a.sx,y=a.sy-a.ss*.75;const k=(x|0)+','+(y|0);if(r.k!==k){r.k=k;r.el.style.transform=`translate(${x|0}px,${y|0}px)`}},

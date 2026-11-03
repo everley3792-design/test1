@@ -4,18 +4,18 @@ const {U,Content:C}=OC;
 const POOL=[
  {k:'pet',t:'摸摸夥伴 5 下',n:5,r:40},{k:'feed',t:'餵夥伴吃東西 2 次',n:2,r:50},{k:'loot:fish',t:'釣到 1 條魚',n:1,r:60},{k:'loot:col',t:'撿到 3 件收藏',n:3,r:60},
  {k:'loot:bug',t:'抓到 1 隻昆蟲',n:1,r:60},{k:'act:garden',t:'照顧花圃 2 次',n:2,r:45},{k:'act:cafe',t:'有夥伴去咖啡館',n:1,r:40},{k:'comfort',t:'夥伴互相安慰 1 次',n:1,r:70},
- {k:'gift',t:'送禮物給夥伴',n:1,r:50},{k:'visit',t:'造訪 3 個不同地點',n:3,r:55},{k:'act:read',t:'夥伴看書 1 次',n:1,r:40},{k:'wish',t:'實現 1 個願望',n:1,r:80},{k:'buy',t:'在商店購買 1 件物品',n:1,r:30}];
+ {k:'gift',t:'送禮物給夥伴',n:1,r:50},{k:'visit',t:'造訪 3 個不同地點',n:3,r:55},{k:'act:read',t:'夥伴看書 1 次',n:1,r:40},{k:'wish',t:'實現 1 個願望',n:1,r:80},{k:'buy',t:'在商店購買 1 件物品',n:1,r:30},{k:'plant',t:'在花圃種下 1 朵花',n:1,r:45}];
 const Quests={
  ensure(){const Q=OC.S.quests,d=U.dayKey();if(Q.day===d&&Q.list.length)return false;
   /* 每日登入獎勵、連續天數 */
   const y=U.dayKey(new Date(Date.now()-864e5));Q.streak=Q.last===y?(Q.streak||0)+1:1;Q.last=d;
   const r=U.rng(U.hash(d));const pool=[...POOL];const list=[];while(list.length<4&&pool.length){const i=Math.floor(r()*pool.length);list.push(Object.assign({p:0,done:0},pool.splice(i,1)[0]))}
-  Q.day=d;Q.list=list;Q.visited=[];const bonus=20+Math.min(6,Q.streak)*5;OC.Items.coins(bonus);OC.Shop.rotate();setTimeout(()=>OC.UI&&OC.UI.toast(`每日登入 +${bonus} 星幣（連續 ${Q.streak} 天）`,'star'),1800);return true},
+  Q.day=d;Q.list=list;Q.visited=[];setTimeout(()=>U.emit('quests'),0);const bonus=20+Math.min(6,Q.streak)*5;OC.Items.coins(bonus);OC.Shop.rotate();setTimeout(()=>OC.UI&&OC.UI.toast(`每日登入 +${bonus} 星幣（連續 ${Q.streak} 天）`,'star'),1800);return true},
  on(k,c){const Q=OC.S.quests;if(!Q.list)return;
   if(k.startsWith('loc:')){Q.visited=Q.visited||[];const l=k.slice(4);if(!Q.visited.includes(l))Q.visited.push(l);k='visit'}
   for(const q of Q.list){if(q.done||q.p>=q.n)continue;if(q.k===k||(k.startsWith('loot:')&&q.k==='loot:col'&&k==='loot:col')){q.p=k==='visit'?Q.visited.length:q.p+1;if(q.p>=q.n){U.emit('quest',q);OC.UI&&OC.UI.toast(`任務達成：${q.t}`,'quest')}}}
   U.emit('quests')},
- claim(q){if(q.done||q.p<q.n)return false;q.done=1;OC.Items.coins(q.r);OC.UI&&OC.UI.toast(`領取 +${q.r} 星幣`,'coin');U.buzz(14);OC.Store.save();U.emit('quests');return true},
+ claim(q){if(q.done||q.p<q.n)return false;q.done=1;OC.Items.coins(q.r);OC.Items.xp(Math.round(q.r/2));if(OC.S.quests.list.every(x=>x.done)){OC.S.gems=(OC.S.gems||0)+5;setTimeout(()=>OC.UI&&OC.UI.celebrate(null,'+5 星鑽','今日任務全部完成','gem'),600)}OC.UI&&OC.UI.toast(`領取 +${q.r} 星幣`,'coin');U.buzz(14);OC.Store.save();U.emit('quests');return true},
  ready(){return(OC.S.quests.list||[]).filter(q=>!q.done&&q.p>=q.n).length}};
 /* 商店：每天輪替，部分商品特價；創作市集販售玩家在工坊上架的作品 */
 const Shop={

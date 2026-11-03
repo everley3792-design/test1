@@ -4,7 +4,7 @@
 const {U,Content:C,Chars,Icons}=OC;
 const Cine={on:false,t:0,ev:[],fx:{},lb:0,
  /* ---------- 演出框架 ---------- */
- begin(a,{zoom=8.6,dur=4}={}){if(this.on)this.finish(true);const Cam=OC.Cam;this.on=true;this.a=a;this.t=0;this.ev=[];this.fx={};this.dur=dur;this.skipped=false;
+ begin(a,{zoom=8.6,dur=4}={}){if(this.on)this.finish(true);const Cam=OC.Cam;this.on=true;this.a=a;this.t=0;this.lb=Math.max(0,Math.min(1,this.lb||0));this.ev=[];this.fx={};this.dur=dur;this.skipped=false;
   this.saved={follow:Cam.follow,focus:Cam.focus,D:Cam.goal.D};Cam.focus=a;Cam.follow=true;Cam.goal.D=Math.min(Cam.goal.D,zoom);
   if(a.task)OC.Sim.finish(a,false);if(a.inter)OC.Social.end(a.inter);a.goal=null;a.vx=a.vz=0;a.task={def:{id:'_cine',t:'和你互動',pose:'stand',gain:{},dur:[dur,dur]},lock:1,phase:'hold'};a.lookAt=0;a.facing=1;
   document.body.classList.add('cine');OC.UI.closeFloating&&OC.UI.closeFloating();return this},
@@ -15,7 +15,7 @@ const Cine={on:false,t:0,ev:[],fx:{},lb:0,
  finish(silent){if(!this.on)return;const a=this.a,Cam=OC.Cam;this.on=false;const af=this.afterFn;this.afterFn=null;if(af)setTimeout(af,350);document.body.classList.remove('cine');Cam.goal.D=this.saved.D;Cam.follow=this.saved.follow;Cam.focus=this.saved.focus||a;
   if(a&&a.task&&a.task.def.id==='_cine'){a.task=null;a.pose='stand';a.lookAt=null;a.hold=null}this.fx={};OC.UI.followChanged&&OC.UI.followChanged();OC.Store.save()},
  /* ---------- 畫面效果（在 renderer.drawOverlay 中呼叫） ---------- */
- draw(ctx,W,H){const lbv=this.on?this.lb:Math.max(0,this.lb-=.06);if(lbv<=0)return;const bar=H*.085*U.ease.out(lbv);ctx.fillStyle='rgba(28,22,26,.92)';ctx.fillRect(0,0,W,bar);ctx.fillRect(0,H-bar,W,bar);if(!this.on)return;
+ draw(ctx,W,H){if(!this.on)this.lb=Math.max(0,this.lb-.06);const lbv=this.lb;if(lbv<=0)return;const bar=H*.085*U.ease.out(lbv);ctx.fillStyle='rgba(28,22,26,.92)';ctx.fillRect(0,0,W,bar);ctx.fillRect(0,H-bar,W,bar);if(!this.on)return;
   const a=this.a,fx=this.fx,t=this.t;if(!a||!a.ss)return;const hx=a.sx,hy=a.sy-a.ss*1.25;
   /* 背景光芒（最愛＝粉色、喜歡＝金色、禮物＝彩虹） */
   if(fx.rays){const k=Math.min(1,(t-fx.rays.t0)/.4),fade=fx.rays.until?Math.max(0,1-(t-fx.rays.until)/.4):1;if(k>0&&fade>0){ctx.save();ctx.translate(hx,a.sy-a.ss*.6);ctx.rotate(t*.35);ctx.globalAlpha=.32*k*fade;

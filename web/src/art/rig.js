@@ -20,12 +20,16 @@ function crop(img){const c=document.createElement('canvas');c.width=img.width;c.
  if(x1<0)return null;x0=Math.max(0,x0-3);y0=Math.max(0,y0-3);x1=Math.min(c.width,x1+4);y1=Math.min(c.height,y1+4);const o=document.createElement('canvas');o.width=x1-x0;o.height=y1-y0;o.getContext('2d').drawImage(c,-x0,-y0);return{cv:o,ox:x0/RS,oy:y0/RS}}
 const rigs=new Map();
 const Rig={RS,
- key(c){return c.kind==='image'?'img:'+c.img:'cat:'+JSON.stringify(c.look)},
+ key(c){return c.kind==='image'?'img:'+c.img+':'+JSON.stringify(c.anim||0):'cat:'+JSON.stringify(c.look)},
+ dropImg(k){for(const key of [...rigs.keys()])if(key.includes(k))rigs.delete(key)},
  get(c){const k=this.key(c);const r=rigs.get(k);if(r)return r.ready?r:null;this.build(c,k);return null},
  async build(c,k){const entry={ready:false};rigs.set(k,entry);try{
   if(c.kind==='image'){const url=await OC.Store.Assets.get(c.img);const img=url&&await raster0(url);if(!img){entry.err=1;return}
    const cr=crop(img)||{cv:img,ox:0,oy:0};/* 匯入圖：底部對齊地面，高度 1.15m */
-   entry.image={cv:cr.cv,w:cr.cv.width,h:cr.cv.height};entry.kind='image';entry.ready=true;U.emit('rig',c.id);return}
+   entry.image={cv:cr.cv,w:cr.cv.width,h:cr.cv.height};entry.kind='image';
+   /* 逐格動畫（動畫工作室） */
+   if(c.anim&&c.anim.frames){entry.frames={};entry.fps=c.anim.fps||8;for(const [st,keys] of Object.entries(c.anim.frames)){const arr=[];for(const fk of keys||[]){const u=await OC.Store.Assets.get(fk);const im=u&&await raster0(u);if(im){const q=crop(im)||{cv:im};arr.push(q.cv)}}if(arr.length)entry.frames[st]=arr}}
+   entry.ready=true;U.emit('rig',c.id);return}
   const svg0=OC.ocSVG({look:c.look});
   /* 量測各部位位置（tail 的支點） */
   const host=document.createElement('div');host.style.cssText='position:fixed;left:-2000px;top:0;width:240px;height:260px;visibility:hidden;pointer-events:none';host.innerHTML=svg0;document.body.appendChild(host);
@@ -113,8 +117,9 @@ const Rig={RS,
   const rot=(A.lean.x+(a.rot||0)+wob)*Math.PI/180*(a.pose==='sleep'?0:1)+(a.c.quirks.walk==='sway'&&a.pose==='walk'?Math.sin(A.step)*.05:0);
   ctx.rotate(rot);ctx.scale(fx*sxk*(1+brk*.4),syk*(1-brk*.15)*turnSq);
   ctx.translate(0,(walkBob-turnHop)*k);
-  if(r.kind==='image'){const I=r.image;const h=1.45*s*scale,w=h*I.w/I.h;const by=Math.sin(A.br)*.01*h;
-   ctx.drawImage(I.cv,-w/2,-h+by,w,h);ctx.restore();a.hitW=w*.8;a.hitH=h;a.headOff=0;return}
+  if(r.kind==='image'){let I=r.image.cv;if(r.frames){const st=a.pose==='sleep'?'sleep':(a.pose==='walk'||a.pose==='run')?'walk':(a.face==='joy'||a.pose==='cheer'||a.pose==='pet')?'happy':'idle';const F=r.frames[st]||r.frames.idle;if(F&&F.length)I=F[Math.floor(A.t*r.fps)%F.length]}
+   const h=1.45*s*scale,w=h*I.width/I.height;const by=Math.sin(A.br)*.01*h;
+   ctx.drawImage(I,-w/2,-h+by,w,h);this.wear(ctx,a,'all',w/240,0,-h+by,h);ctx.restore();a.hitW=w*.8;a.hitH=h;a.headOff=0;return}
   const L=r.L,P=r.piv;
   const img=(lay,x,y)=>{if(!lay)return;ctx.drawImage(lay.cv,(lay.ox-CX)*k+x,(lay.oy-FOOT_Y)*k+y,lay.cv.width/RS*k,lay.cv.height/RS*k)};
   /* 尾巴：繞支點旋轉 */
@@ -126,12 +131,12 @@ const Rig={RS,
   if(a.pose!=='sleep'){img(L.footL,lx,ly);img(L.footR,rx,ry)}
   /* 身體：呼吸時微幅起伏 */
   const bodyDy=(a.pose==='sit'?6:a.pose==='sleep'?10:0)*k;
-  ctx.save();ctx.translate(0,bodyDy);img(L.body,0,0);ctx.restore();
+  ctx.save();ctx.translate(0,bodyDy);img(L.body,0,0);this.wear(ctx,a,'body',k,0,0);ctx.restore();
   if(a.pose==='sleep'){img(L.footL,-6*k,-2*k);img(L.footR,6*k,-2*k)}
   /* 頭：跟隨身體（彈簧延遲）、傾斜、視線 */
   const face=this.face(a,A);const H=L['head_'+face]||L.head_neutral;
   const hx=A.hx.x*k,hy=(A.hy.x+Math.sin(A.br)*(a.pose==='sleep'?2.2:1.1))*k+bodyDy*.6;
-  ctx.save();const pvx=(P.head[0]-CX)*k,pvy=(P.head[1]-FOOT_Y)*k;ctx.translate(pvx+hx,pvy+hy);ctx.rotate(A.ht.x*Math.PI/180);ctx.translate(-pvx,-pvy);img(H,0,0);
+  ctx.save();const pvx=(P.head[0]-CX)*k,pvy=(P.head[1]-FOOT_Y)*k;ctx.translate(pvx+hx,pvy+hy);ctx.rotate(A.ht.x*Math.PI/180);ctx.translate(-pvx,-pvy);img(H,0,0);this.wear(ctx,a,'head',k,0,0);
   /* 手上的東西（吃東西、玩具） */
   if(a.hold){const it=OC.Content.ITEM[a.hold]||(OC.Creations&&OC.Creations.item(a.hold));const img=it?OC.Icons.itemImg(it):OC.Icons.img(a.hold);if(img){ctx.save();ctx.scale(1/fx,1);const hs=Math.max(12,s*.36*scale);
    const bite=a.holdK??1;ctx.globalAlpha*=Math.min(1,bite*3);ctx.translate(0,-(FOOT_Y-168)*k);const sc=.55+bite*.45;ctx.scale(sc,sc);ctx.drawImage(img,-hs/2,-hs/2,hs,hs);ctx.restore()}}
@@ -142,6 +147,11 @@ const Rig={RS,
   /* 生病：鼻水泡泡／頭上烏雲由 overlay 處理；害羞紅暈 */
   if(a.blushK>0){ctx.globalAlpha=Math.min(1,a.blushK)*.5;ctx.fillStyle='#F27C9B';ctx.beginPath();ctx.ellipse(-45*k+hx,(152-FOOT_Y)*k+hy,14*k,6*k,0,0,Math.PI*2);ctx.ellipse(45*k+hx,(152-FOOT_Y)*k+hy,14*k,6*k,0,0,Math.PI*2);ctx.fill()}
   ctx.restore();a.hitW=170*k;a.hitH=240*k;a.headOff=(A.hy.x)*k},
+ /* 工坊飾品：頭上／臉上／身上，跟著頭與身體一起動 */
+ wear(ctx,a,part,k,ox,oy,imgH){const W=a.c.wear;if(!W||!W.length||!OC.Creations)return;for(const w of W){const anchor=w.anchor||'head';if(part!=='all'&&!(part==='head'&&(anchor==='head'||anchor==='face'))&&!(part==='body'&&anchor==='body'))continue;
+   const src=OC.Creations.imgs.get(w.id);if(!src)continue;const im=OC.Icons.img(null,src);if(!im)continue;const base=anchor==='head'?[120,40]:anchor==='face'?[120,140]:[120,200];
+   let x,y;if(part==='all'){x=(w.x||0)*k;y=oy+imgH*(anchor==='body'?.62:anchor==='face'?.3:.06)+(w.y||0)*k}else{x=(base[0]-CX+(w.x||0))*k;y=(base[1]-FOOT_Y+(w.y||0))*k}
+   const sz=150*(w.s||.6)*k;const hgt=sz*im.height/im.width;ctx.save();ctx.translate(x,y);ctx.rotate((w.r||0)*Math.PI/180);ctx.drawImage(im,-sz/2,-hgt/2,sz,hgt);ctx.restore()}},
  /* 角色頭像（UI 用）：直接用 SVG，不需動畫 */
  avatarHTML(c){if(c.kind==='image')return`<img class="av-img" data-img="${U.esc(c.img)}" alt="">`;return OC.ocSVG({look:c.look})},
  async fillImgs(root){for(const n of root.querySelectorAll('img[data-img]')){if(n.src)continue;const u=await OC.Store.Assets.get(n.dataset.img);if(u)n.src=u}}};

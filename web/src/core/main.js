@@ -13,7 +13,7 @@ const Loop={timeScale:1,raf:0,last:0,acc:0,paused:false,renderOn:true,fpsN:0,fps
 /* ---------- 相機：平移、縮放、跟隨（v4.1 重寫：以螢幕位移換算，不會跳動） ---------- */
 const Cam={follow:true,focus:null,goal:{tx:0,tz:0,D:16},vel:{x:0,z:0},lock:0,
  set(tx,tz,D,instant){this.goal={tx,tz,D:D??this.goal.D};this.vel.x=this.vel.z=0;if(instant){R.cam.tx=tx;R.cam.tz=tz;R.cam.D=this.goal.D}},
- limits(){const sc=R.sc;return sc.kind==='room'?{D:[7,13],b:[-1.6,-1,1.6,1.4]}:{D:[9,30],b:[sc.bounds[0]+2,sc.bounds[1]+2,sc.bounds[2]-2,sc.bounds[3]-1]}},
+ limits(){const sc=R.sc;return sc.kind==='room'?{D:[8,15],b:[-1.6,-1,1.6,1.4]}:{D:[9,30],b:[sc.bounds[0]+2,sc.bounds[1]+2,sc.bounds[2]-2,sc.bounds[3]-1]}},
  /* 目前地面上每公尺對應幾像素（x、z 各自） */
  scale(){const c=R.cam;c.update();const a=c.p(c.tx,0,c.tz),bx=c.p(c.tx+1,0,c.tz),bz=c.p(c.tx,0,c.tz+1);return{x:Math.max(4,bx.x-a.x),z:Math.max(2,bz.y-a.y)}},
  pan(dx,dy){const k=this.scale();this.goal.tx-=dx/k.x;this.goal.tz-=dy/k.z;this.clamp();R.cam.tx=this.goal.tx;R.cam.tz=this.goal.tz},

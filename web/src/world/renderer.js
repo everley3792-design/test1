@@ -207,7 +207,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   if(o.type==='campfire'&&this.fireOn(o)){const f=Math.sin(t*14)*.08+Math.sin(t*23)*.05;ctx.save();ctx.translate(q.x,q.y-s*.12);const fs=s*(.38+f*.2);
    const fl=(c,k,ox)=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(-fs*.32*k+ox,0);ctx.quadraticCurveTo(-fs*.3*k+ox,-fs*.6*k,ox+Math.sin(t*9)*fs*.06,-fs*1.15*k);ctx.quadraticCurveTo(fs*.3*k+ox,-fs*.6*k,fs*.32*k+ox,0);ctx.fill()};
    fl('#F4703C',1,0);fl('#FFB347',.72,fs*.03);fl('#FFF0A8',.4,0);ctx.restore();if(Math.random()<.05)Fx.smoke(o.x,.6,o.z)}
-  if(o.type==='house'&&this.perf.ambient&&Math.random()<.035){Fx.smoke(o.x+.95,3.3,o.z-1.2)}
+  if(o.type==='house'&&this.perf.ambient&&Math.random()<.035){Fx.smoke(o.x+1.6,4.7,o.z-1.3)}
   if(o.type==='fountain'&&this.perf.ambient){const top=cam.p(o.x,1.45,o.z);ctx.fillStyle='rgba(225,245,255,.8)';for(let i=0;i<6;i++){const ph=(t*1.2+i/6)%1;const a=i/6*TAU;const xx=top.x+Math.cos(a)*ph*s*.55,yy=top.y-Math.sin(ph*Math.PI)*s*.4+ph*s*.7;ctx.globalAlpha=1-ph;ctx.beginPath();ctx.arc(xx,yy,s*.03,0,TAU);ctx.fill()}ctx.globalAlpha=1}},
  fireOn(o){return Env.isNight()||Env.phase==='dusk'||Env.phase==='dawn'||o.lit},
  spriteOf(o){if(o._spr&&o._sv===o.style)return o._spr;if(o.type==='cfurn'||o.type==='cbuild'){const k=OC.Creations.imgs.get(o.cid);if(o._spr&&o._sk===k)return o._spr;o._sk=k}let s=null;
