@@ -73,7 +73,14 @@ class PetActor(private val svc: PetService, private val wm: WindowManager, data:
 
     private val view = PetView()
     private val lp = WindowManager.LayoutParams(boxW, boxH, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+        PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START }
+    // 觸控視窗：只蓋住角色身體（透明區域不攔截觸控，直接交給底下的 App）；繪圖視窗本身設為 NOT_TOUCHABLE
+    private val hitW = (sizePx * .66f).toInt(); private val hitH = (sizePx * .8f).toInt()
+    @SuppressLint("ClickableViewAccessibility")
+    private val hit = object : View(svc) { override fun onTouchEvent(e: MotionEvent): Boolean = view.onTouchEvent(e) }
+    private val hlp = WindowManager.LayoutParams(hitW, hitH, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
         PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.START }
     private val bubble: TextView = svc.bubbleWindow()
     private var bubbleT = 0f
@@ -94,13 +101,16 @@ class PetActor(private val svc: PetService, private val wm: WindowManager, data:
             tailRight = p.optBoolean("tailRight", true)
         }
         x = svc.screenW * (index + 1f) / (count + 1f); y = svc.screenH * .3f; fallFrom = y
-        wm.addView(view, lp); place()
+        // 還原上次放下的位置（以螢幕比例儲存，旋轉或換解析度後仍落在合理位置）
+        svc.getSharedPreferences(POS, 0).let { sp -> val rx = sp.getFloat("$id.x", -1f); val ry = sp.getFloat("$id.y", -1f)
+            if (rx in 0f..1f && ry in 0f..1f) { x = (rx * svc.screenW).coerceIn(boxW * .5f, svc.screenW - boxW * .5f); y = ry * svc.screenH; fallFrom = y } }
+        wm.addView(view, lp); wm.addView(hit, hlp); place()
     }
 
     // ===================== 行為 =====================
     fun tick(dt: Float) {
         if (hiddenUntil > System.currentTimeMillis()) return
-        if (view.visibility != View.VISIBLE && hiddenUntil != 0L) { hiddenUntil = 0L; view.visibility = View.VISIBLE; say("我回來了～") }
+        if (view.visibility != View.VISIBLE && hiddenUntil != 0L) { hiddenUntil = 0L; setVisible(true); say("我回來了～") }
         t += dt; stateT += dt
         br += dt * (if (state == "sleep") 1.05f else if (sick) 2.2f else 1.7f)
         blinkT -= dt; if (blinkT <= 0) { blink = .13f; blinkT = if (Random.nextFloat() < .2f) .28f else 2.2f + Random.nextFloat() * 3.3f }; if (blink > 0) blink -= dt
@@ -183,7 +193,7 @@ class PetActor(private val svc: PetService, private val wm: WindowManager, data:
     fun hearts() { repeat(2) { fx.add(floatArrayOf(boxW / 2f + (Random.nextFloat() - .5f) * sizePx * .4f, boxH * .25f, 1.2f, 0f)) } }
     fun updateState(p: JSONObject) { mood = p.optString("mood", mood); sick = !p.isNull("sick") && p.optString("sick").isNotEmpty(); p.optJSONObject("lines")?.let { lines = it } }
     fun onScreenChanged() { x = x.coerceIn(boxW * .5f, svc.screenW - boxW * .5f); if (y > svc.screenH) y = svc.screenH.toFloat(); if (!held) drop(0f) }
-    fun setVisible(v: Boolean) { view.visibility = if (v) View.VISIBLE else View.GONE; if (!v) bubble.visibility = View.GONE }
+    fun setVisible(v: Boolean) { view.visibility = if (v) View.VISIBLE else View.GONE; hit.visibility = view.visibility; if (!v) bubble.visibility = View.GONE }
     fun hideFor(ms: Long) { hiddenUntil = System.currentTimeMillis() + ms; setVisible(false) }
     fun summon() { hiddenUntil = 0; setVisible(true); x = svc.screenW / 2f; y = svc.screenH * .3f; drop(0f); say("我在這裡！") }
 
@@ -203,9 +213,14 @@ class PetActor(private val svc: PetService, private val wm: WindowManager, data:
         if (nx == lastX && ny == lastY) return
         lastX = nx; lastY = ny; lp.x = nx; lp.y = ny
         try { wm.updateViewLayout(view, lp) } catch (_: Exception) {}
+        // 攀爬時身體貼在牆邊、往內偏一點
+        hlp.x = (x - hitW / 2f + wall * sizePx * .12f).toInt(); hlp.y = (y - hitH - sizePx * .06f).toInt()
+        try { wm.updateViewLayout(hit, hlp) } catch (_: Exception) {}
     }
 
-    fun remove() { try { wm.removeView(view) } catch (_: Exception) {}; try { wm.removeView(bubble) } catch (_: Exception) {}; layers.values.forEach { it.bmp.recycle() } }
+    /** 儲存位置（放下、移除時） */
+    fun savePos() { if (svc.screenW <= 0 || svc.screenH <= 0) return; svc.getSharedPreferences(POS, 0).edit().putFloat("$id.x", x / svc.screenW).putFloat("$id.y", (y / svc.screenH).coerceIn(0f, 1f)).apply() }
+    fun remove() { savePos(); try { wm.removeView(view) } catch (_: Exception) {}; try { wm.removeView(hit) } catch (_: Exception) {}; try { wm.removeView(bubble) } catch (_: Exception) {}; layers.values.forEach { it.bmp.recycle() } }
 
     // ===================== 動畫 =====================
     private fun animate(dt: Float) {
@@ -334,7 +349,7 @@ class PetActor(private val svc: PetService, private val wm: WindowManager, data:
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     removeCallbacks(longPress)
                     when (mode) {
-                        2 -> { held = false; fallFrom = y; vx = flingVX.coerceIn(-3200f, 3200f) * .5f; vy = flingVY.coerceIn(-3200f, 3200f) * .5f; if (vy < 0) fallFrom = y + vy * .25f; state = "fall"; stateT = 0f; PetStore.addEvent(svc, this@PetActor.id, "drop") }
+                        2 -> { held = false; fallFrom = y; vx = flingVX.coerceIn(-3200f, 3200f) * .5f; vy = flingVY.coerceIn(-3200f, 3200f) * .5f; if (vy < 0) fallFrom = y + vy * .25f; state = "fall"; stateT = 0f; PetStore.addEvent(svc, this@PetActor.id, "drop"); savePos() }
                         1 -> { setState("idle"); if (petStrokes >= 6) { face = "head_joy"; faceT = 1.6f } }
                         3 -> {}
                         else -> {
@@ -365,3 +380,5 @@ class PetActor(private val svc: PetService, private val wm: WindowManager, data:
         }
     }
 }
+
+private const val POS = "pet_pos"

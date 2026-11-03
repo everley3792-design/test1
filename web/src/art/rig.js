@@ -91,7 +91,8 @@ const Rig={RS,
    case'dizzy':hyT=4+Math.sin(A.t*3)*2;htT=Math.sin(A.t*4.2)*12;hxT=Math.sin(A.t*2.1)*6;tailAmp=8;tailSpd=1.4;tailBase=-12;break}
   if(a.sick){tailBase-=10;tailAmp*=.5;hyT+=3}
   if(a.mood==='happy'||a.mood==='excited'||a.mood==='loved'){tailAmp*=1.25;tailSpd*=1.25}
-  U.spring(A.hy,hyT,dt,140,.55);U.spring(A.hx,hxT,dt,90,.7);U.spring(A.ht,htT,dt,110,.6);U.spring(A.lean,leanT,dt,80,.75);
+  const det=OC.R.perf?OC.R.perf.animDetail:1;if(det===0){/* 簡化：頭與尾巴直接到位，不做次級彈簧 */A.hy.x=hyT;A.hx.x=hxT;A.ht.x=htT;A.lean.x=leanT;tailAmp*=.5}else{U.spring(A.hy,hyT,dt,140,.55);U.spring(A.hx,hxT,dt,90,.7);U.spring(A.ht,htT,dt,110,.6);U.spring(A.lean,leanT,dt,80,.75)}
+  if(det===2&&!a.task&&!a.goal&&Math.random()<dt*.05)A.lookT=0;
   A.tailPh=(A.tailPh||0)+dt*tailSpd*2;U.spring(A.tl,tailBase+Math.sin(A.tailPh)*tailAmp,dt,90,.5);
   /* 說話嘴型 */
   if(a.bubble&&a.bubble.t<a.bubble.text.length/28)A.talkT+=dt;else A.talkT=0;
@@ -153,7 +154,7 @@ const Rig={RS,
    let x,y;if(part==='all'){x=(w.x||0)*k;y=oy+imgH*(anchor==='body'?.62:anchor==='face'?.3:.06)+(w.y||0)*k}else{x=(base[0]-CX+(w.x||0))*k;y=(base[1]-FOOT_Y+(w.y||0))*k}
    const sz=150*(w.s||.6)*k;const hgt=sz*im.height/im.width;ctx.save();ctx.translate(x,y);ctx.rotate((w.r||0)*Math.PI/180);ctx.drawImage(im,-sz/2,-hgt/2,sz,hgt);ctx.restore()}},
  /* 角色頭像（UI 用）：直接用 SVG，不需動畫 */
- avatarHTML(c){if(c.kind==='image')return`<img class="av-img" data-img="${U.esc(c.img)}" alt="">`;return OC.ocSVG({look:c.look})},
+ avatarHTML(c){if(c.kind==='image'){const u=OC.Store.Assets.peek(c.img);return u?`<img class="av-img" src="${u}" alt="">`:`<img class="av-img" data-img="${U.esc(c.img)}" alt="">`}return OC.ocSVG({look:c.look})},
  async fillImgs(root){for(const n of root.querySelectorAll('img[data-img]')){if(n.src)continue;const u=await OC.Store.Assets.get(n.dataset.img);if(u)n.src=u}}};
 function raster0(url){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=url})}
 OC.Rig=Rig;

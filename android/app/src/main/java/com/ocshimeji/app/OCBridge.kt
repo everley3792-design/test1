@@ -25,43 +25,48 @@ import java.io.File
 class OCBridge(private val act: MainActivity) {
     private val ctx: Context get() = act.applicationContext
     private var askedOverlay = false
+    /** 非 App 內建頁面（理論上不會發生）一律拒絕 */
+    private val ok: Boolean get() = act.trusted
 
     @JavascriptInterface
     fun setPets(json: String) {
-        if (json.length > 40_000_000) return
-        val ok = try { PetStore.save(ctx, JSONObject(json)) } catch (e: Exception) { false }
         if (!ok) return
+        if (json.length > 40_000_000) return
+        val saved = try { PetStore.save(ctx, JSONObject(json)) } catch (e: Exception) { false }
+        if (!saved) return
         act.runOnUiThread { startPetsIfAllowed() }
     }
 
     @JavascriptInterface
     fun updatePetState(json: String) {
+        if (!ok) return
         if (json.length > 200_000) return
         try { PetStore.updateState(ctx, json) } catch (_: Exception) { return }
         if (PetService.running) PetService.reload(ctx, stateOnly = true)
     }
 
     @JavascriptInterface
-    fun stopPets() { act.runOnUiThread { PetService.stop(ctx) } }
+    fun stopPets() { if (!ok) return; act.runOnUiThread { PetService.stop(ctx) } }
 
     @JavascriptInterface
-    fun pullPetEvents(): String = PetStore.drainEvents(ctx)
+    fun pullPetEvents(): String = if (!ok) "[]" else PetStore.drainEvents(ctx)
 
     @JavascriptInterface
-    fun canDrawOverlays(): String = Settings.canDrawOverlays(ctx).toString()
+    fun canDrawOverlays(): String = if (!ok) "false" else Settings.canDrawOverlays(ctx).toString()
 
     @JavascriptInterface
-    fun openPetSettings() { act.runOnUiThread { requestOverlay(force = true) } }
+    fun openPetSettings() { if (!ok) return; act.runOnUiThread { requestOverlay(force = true) } }
 
     @JavascriptInterface
-    fun hasUsageAccess(): String = AppSense.hasAccess(ctx).toString()
+    fun hasUsageAccess(): String = if (!ok) "false" else AppSense.hasAccess(ctx).toString()
 
     @JavascriptInterface
-    fun openUsageAccess() { act.runOnUiThread { try { act.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) {} } }
+    fun openUsageAccess() { if (!ok) return; act.runOnUiThread { try { act.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) {} } }
 
     /** 拍照模式：把照片存到快取並開啟分享（可存到相簿） */
     @JavascriptInterface
     fun saveImage(name: String, dataUrl: String) {
+        if (!ok) return
         if (!dataUrl.startsWith("data:image/") || dataUrl.length > 30_000_000) return
         val bytes = try { android.util.Base64.decode(dataUrl.substringAfter(","), android.util.Base64.DEFAULT) } catch (_: Exception) { return }
         val safe = name.replace(Regex("[^\\w.\\-]"), "_").take(60).ifBlank { "oc-shimeji.jpg" }
@@ -72,6 +77,7 @@ class OCBridge(private val act: MainActivity) {
 
     @JavascriptInterface
     fun vibrate(ms: String) {
+        if (!ok) return
         val t = ms.toLongOrNull()?.coerceIn(1, 120) ?: return
         val v = ContextCompat.getSystemService(ctx, Vibrator::class.java) ?: return
         try { v.vibrate(VibrationEffect.createOneShot(t, VibrationEffect.DEFAULT_AMPLITUDE)) } catch (_: Exception) {}
@@ -80,6 +86,7 @@ class OCBridge(private val act: MainActivity) {
     /** 匯出備份：寫到 App 快取再透過系統分享選單交給使用者選擇存放位置 */
     @JavascriptInterface
     fun saveFile(name: String, text: String) {
+        if (!ok) return
         if (text.length > 60_000_000) return
         val safe = name.replace(Regex("[^\\w\\u4e00-\\u9fff.\\-]"), "_").take(80).ifBlank { "oc-shimeji.json" }
         val dir = File(ctx.cacheDir, "exports").apply { mkdirs() }

@@ -35,7 +35,8 @@ const Sim={agents:new Map(),acc:0,t:0,
  active(){return this.agents.get(OC.S.activeId)||this.agents.values().next().value||null},
 
  /* ================= 每格 ================= */
- tick(dt){this.t+=dt;for(const a of this.agents.values()){a.update(dt);this.move(a,dt);this.runTask(a,dt)}
+ tick(dt){this.t+=dt;const bg=OC.Store.perf().bgTick;const iv=bg>=1?0:.06/bg;
+  for(const a of this.agents.values()){let d=dt;if(iv&&!this.visible(a)){a._bg=(a._bg||0)+dt;if(a._bg<iv)continue;d=a._bg;a._bg=0}a.update(d);this.move(a,d);this.runTask(a,d)}
   this.acc+=dt;if(this.acc>=.25){const step=this.acc;this.acc=0;this.slow(step)}},
  /* 4Hz：需求、情緒、決策、社交 */
  slow(dt){const H=dt/3600;for(const a of this.agents.values()){const c=a.c;this.decay(c,H,a);this.health(a,dt);this.moodOf(c);

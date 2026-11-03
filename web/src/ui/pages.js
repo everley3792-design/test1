@@ -35,7 +35,7 @@ const Pages={cur:null,CAT_IC,
    <h3 class="sec">共同回憶</h3>${r.mem.length?r.mem.slice(0,8).map(m=>`<p class="log">${ic(m.val>0?'flower':'rain',18)}<span>${esc(m.text)}</span></p>`).join(''):'<p class="empty">還沒有共同回憶</p>'}
    <h3 class="sec">關係設定</h3><div class="chips">${[['','自然發展'],['family','家人'],['rival','競爭對手']].map(([k,t])=>`<button class="chip ${(r.tag||'')===k?'on':''}" data-tag="${k}">${t}</button>`).join('')}<button class="chip ${r.noRomance?'':'on'}" data-rom>${r.noRomance?'不允許戀愛':'允許戀愛發展'}</button></div>
    ${r.broken||r.conf>30?`<button class="btn primary wide" data-med>介入調解</button>`:''}${r.lovers?`<button class="btn ghost wide" data-unlove>結束戀人關係</button>`:''}`,{});OC.Rig.fillImgs(s2.el);
-  s2.el.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;if(t.dataset.tag!=null){r.tag=t.dataset.tag||null}else if(t.hasAttribute('data-rom'))r.noRomance=!r.noRomance;else if(t.hasAttribute('data-med')){const res=OC.Social.mediate(a,b);UI.toast(res.ok?'調解成功！':'還需要一點時間…',res.ok?'heart':'info')}else if(t.hasAttribute('data-unlove')){r.lovers=false;Sim.log(null,`${A.name}和${B.name}決定回到朋友關係。`,'cloud')}else return;OC.Store.save();s2.close();this.relSheet(a,b);if(this.cur==='chars')this.render()})},
+  s2.el.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;if(t.dataset.tag!=null){r.tag=t.dataset.tag||null}else if(t.hasAttribute('data-rom'))r.noRomance=!r.noRomance;else if(t.hasAttribute('data-med')){const res=OC.Social.mediate(a,b);UI.toast(res.ok?'調解成功！':'還需要一點時間…',res.ok?'heart':'info')}else if(t.hasAttribute('data-unlove')){r.lovers=false;Sim.log(null,`${A.name}和${B.name}決定回到朋友關係。`,'cloud')}else return;OC.Store.save();s2.close();setTimeout(()=>this.relSheet(a,b),10);if(this.cur==='chars')this.render()})},
  /* 角色檔案（查看用） */
  profile(id){const c=OC.S.chars.find(x=>x.id===id);if(!c)return;const tp=Chars.typeName(c);const P=c.profile;
   const field=(k,v)=>v?`<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`:'';
@@ -90,40 +90,50 @@ const Pages={cur:null,CAT_IC,
   else if(t==='story'){b=OC.S.log.slice(0,80).map(l=>`<p class="log">${ic('sprout',18)}<span>${esc(l.text)}<small>${UI.ago(l.t)}</small></span></p>`).join('')||'<p class="empty">故事才剛開始</p>'}
   else if(t==='home')b=OC.Deco.panel();
   return`<header class="ph"><span class="ph-i">${ic('quest',40)}</span><div><h1>小島日常</h1><p>${ic('coin',16)} ${OC.S.coins.toLocaleString()}　${ic('gem',16)} ${OC.S.gems||0}</p></div></header><div class="tabs">${tabs.map(([k,n])=>`<button data-ltab="${k}" class="${t===k?'on':''}">${n}</button>`).join('')}</div><div class="lb">${b}</div>`},
- timeWeather(){const W=Env.WX;const off=OC.S.world.timeOffset||0;const s=UI.sheet(`<p class="lead">${Env.label().date} ${Env.label().time}</p>
-  <h3 class="sec">時間</h3><div class="chips">${[['real','現在（實際時間）',0],['m','清晨 6:30',6.5],['d','中午 12:00',12],['e','黃昏 18:00',18],['n','夜晚 21:00',21]].map(([k,t,h])=>`<button class="chip" data-h="${h}">${t}</button>`).join('')}</div>
-  <h3 class="sec">天氣</h3><div class="chips"><button class="chip ${!OC.S.world.weather?'on':''}" data-w="">自動</button>${Object.entries(W).map(([k,v])=>`<button class="chip ${OC.S.world.weather===k?'on':''}" data-w="${k}">${ic(v.ic,18)} ${v.t}</button>`).join('')}</div><p class="hint">調整後畫面會平順過渡，夥伴的作息也會跟著改變。</p>`,{title:'時間與天氣',icon:Env.WX[Env.wid].ic});
-  s.el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.h!=null){const h=+b.dataset.h;if(!h)OC.S.world.timeOffset=0;else{const d=new Date();const cur=d.getHours()+d.getMinutes()/60;OC.S.world.timeOffset=Math.round((h-cur)*3600e3)}}
-   else if(b.dataset.w!=null){OC.S.world.weather=b.dataset.w||null}else return;Env._k=-1;Env.update();OC.R.skey='';UI.hudTime(true);OC.Store.save();s.close();this.timeWeather()})},
- /* ================= 設定 ================= */
- settings(){const st=OC.S.settings,cu=st.custom;const modes=[['quality','高畫質','完整光影、粒子、環境動態'],['balanced','平衡','一般手機推薦'],['battery','省電','30 FPS、降低特效與解析度'],['custom','自訂','自己調整每一項']];
-  const sw=(k,t,d)=>`<label class="sw"><span><b>${t}</b><small>${d||''}</small></span><input type="checkbox" data-s="${k}" ${st[k]!==false?'checked':''}><i></i></label>`;
-  const s=UI.sheet(`
-   <h3 class="sec">畫質與效能</h3><div class="modes">${modes.map(([k,t,d])=>`<button class="mode ${st.perf===k?'on':''}" data-perf="${k}"><b>${t}</b><small>${d}</small></button>`).join('')}</div>
-   <div class="custom" ${st.perf==='custom'?'':'hidden'}>
-    ${[['fps','FPS 上限',[[30,'30'],[60,'60']]],['scale','渲染解析度',[[1,'低'],[1.5,'中'],[2,'高'],[3,'最高']]],['shadows','地面細節',[[0,'關'],[1,'開'],[2,'高']]],['particles','粒子數量',[[0,'無'],[.3,'少'],[.6,'中'],[1,'多']]],['ambient','環境動畫',[[0,'關'],[1,'開'],[2,'豐富']]],['cloudShadow','雲影',[[0,'關'],[1,'開']]],['maxChars','同時顯示角色',[[4,'4'],[6,'6'],[10,'10'],[16,'16']]]].map(([k,t,o])=>`<div class="opt"><span>${t}</span><div class="seg">${o.map(([v,n])=>`<button data-c="${k}" data-v="${v}" class="${cu[k]==v?'on':''}">${n}</button>`).join('')}</div></div>`).join('')}</div>
+ /* ================= 時間與天氣（就地更新，不關閉重開，避免閃爍） ================= */
+ timeWeather(){const W=Env.WX;const body=()=>{const off=OC.S.world.timeOffset||0,L=Env.label();return`<p class="lead">${L.date}　<b>${L.time}</b>　${L.wx.t}</p>
+  <h3 class="sec">時間</h3><div class="chips">${[['現在（實際時間）',0],['清晨 6:30',6.5],['中午 12:00',12],['黃昏 18:00',18],['夜晚 21:00',21]].map(([t,h])=>`<button class="chip ${(!h&&!off)||(h&&Math.abs(Env.h-h)<.05)?'on':''}" data-h="${h}">${t}</button>`).join('')}</div>
+  <h3 class="sec">天氣</h3><div class="chips"><button class="chip ${!OC.S.world.weather?'on':''}" data-w="">自動</button>${Object.entries(W).map(([k,v])=>`<button class="chip ${OC.S.world.weather===k?'on':''}" data-w="${k}">${ic(v.ic,18)} ${v.t}</button>`).join('')}</div><p class="hint">調整後畫面會平順過渡，夥伴的作息也會跟著改變。</p>`};
+  const s=UI.sheet(body(),{title:'時間與天氣',icon:Env.WX[Env.wid].ic});
+  s.el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.classList.contains('sh-x'))return;if(b.dataset.h!=null){const h=+b.dataset.h;if(!h)OC.S.world.timeOffset=0;else{const d=new Date();const cur=d.getHours()+d.getMinutes()/60;OC.S.world.timeOffset=Math.round((h-cur)*3600e3)}}
+   else if(b.dataset.w!=null){OC.S.world.weather=b.dataset.w||null}else return;Env._k=-1;Env.update();UI.hudTime(true);OC.Store.save();s.update(body())})},
+ /* ================= 設定（所有選項立即生效、就地更新） ================= */
+ settings(){const st=OC.S.settings;const modes=[['quality','高畫質','完整光影、粒子、環境動態'],['battery','省電','30 FPS、降低特效與解析度'],['balanced','平衡','一般手機推薦'],['custom','自訂','自己調整每一項']];
+  const OPTS=[['fps','FPS 上限',[[30,'30'],[60,'60']]],['scale','渲染解析度',[[1,'低'],[1.5,'中'],[2,'高'],[3,'最高']]],['shadows','地面細節與陰影',[[0,'關'],[1,'開'],[2,'高']]],['particles','粒子特效',[[0,'無'],[.3,'少'],[.6,'中'],[1,'多']]],['weather','天氣效果',[[0,'關'],[1,'開']]],['ambient','環境動畫',[[0,'關'],[1,'開'],[2,'豐富']]],['cloudShadow','雲影',[[0,'關'],[1,'開']]],['animDetail','角色動畫細節',[[0,'簡化'],[1,'標準'],[2,'精緻']]],['maxChars','同時顯示角色',[[4,'4'],[6,'6'],[10,'10'],[16,'16']]],['bgTick','畫面外角色更新',[[.25,'省電'],[.5,'一般'],[1,'即時']]]];
+  const body=()=>{const cu=st.custom,sw=(k,t,d)=>`<label class="sw"><span><b>${t}</b><small>${d||''}</small></span><input type="checkbox" data-s="${k}" ${st[k]!==false?'checked':''}><i></i></label>`;return`
+   <h3 class="sec">畫質與效能</h3><div class="modes">${[modes[0],modes[2],modes[1],modes[3]].map(([k,t,d])=>`<button class="mode ${st.perf===k?'on':''}" data-perf="${k}"><b>${t}</b><small>${d}</small></button>`).join('')}</div>
+   <div class="custom" ${st.perf==='custom'?'':'hidden'}>${OPTS.map(([k,t,o])=>`<div class="opt"><span>${t}</span><div class="seg">${o.map(([v,n])=>`<button data-c="${k}" data-v="${v}" class="${cu[k]==v?'on':''}">${n}</button>`).join('')}</div></div>`).join('')}</div>
+   <p class="hint">目前 ${OC.Loop.fps} FPS・解析度 ×${OC.R.dpr.toFixed(2)}</p>
    <div class="opt"><span>減少動態效果</span><div class="seg">${[['system','跟隨系統'],['full','完整'],['reduce','減少']].map(([v,n])=>`<button data-motion="${v}" class="${st.motion===v?'on':''}">${n}</button>`).join('')}</div></div>
    <div class="opt"><span>外觀主題</span><div class="seg">${[['system','跟隨系統'],['light','淺色'],['dark','深色']].map(([v,n])=>`<button data-theme="${v}" class="${st.theme===v?'on':''}">${n}</button>`).join('')}</div></div>
    <h3 class="sec">生活模擬</h3>${sw('autoSocial','夥伴自主社交','自己聊天、玩耍、拜訪')}${sw('negEvents','負面經歷','吵架、生病、心情低落等（重大變化仍會詢問你）')}${sw('romance','戀愛發展','成為戀人前一定會先問你')}
    <h3 class="sec">畫面</h3>${sw('bubbles','對話泡泡')}${sw('names','名字標籤')}${sw('haptics','觸覺回饋')}
    <div class="opt"><span>互動演出</span><div class="seg">${[['full','電影式'],['short','簡短']].map(([v,n])=>`<button data-cine="${v}" class="${(st.cine||'full')===v?'on':''}">${n}</button>`).join('')}</div></div>
    <h3 class="sec">Android 桌寵</h3><button class="btn wide" data-petset>${ic('paw',20)}桌寵設定</button>
-   <h3 class="sec">資料</h3><div class="col"><button class="btn" data-exp>匯出完整備份（含圖片）</button><button class="btn" data-imp>匯入備份</button>${OC.Store.hasLegacy()?'<button class="btn" data-legacy>重新從 3.2 舊版匯入夥伴</button>':''}<button class="btn" data-intro>重看開場動畫</button><button class="btn" data-tut>重看新手引導</button><button class="btn ghost danger-t" data-reset>重新開始遊戲</button></div>
-   <p class="hint ver">OC Shimeji v4.1 · FPS ${OC.Loop.fps}</p>`,{full:true,title:'設定',icon:'gear'});
-  s.el.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;const re=()=>{s.close();this.settings()};
-   if(b.dataset.perf){st.perf=b.dataset.perf;OC.R.resize();OC.R.skey='';OC.Store.save();re()}
-   else if(b.dataset.c){cu[b.dataset.c]=+b.dataset.v;OC.R.resize();OC.R.skey='';OC.Store.save();re()}
+   <h3 class="sec">資料與備份</h3><div class="col"><button class="btn" data-exp>${ic('export',18)}匯出完整備份（含所有圖片與動畫）</button><button class="btn" data-imp>${ic('import',18)}匯入完整備份</button><button class="btn" data-snaps>${ic('book',18)}每日自動快照與還原</button><button class="btn ghost" data-gc>清理沒有使用的素材</button>${OC.Store.hasLegacy()?'<button class="btn ghost" data-legacy>重新從 3.2 舊版匯入夥伴</button>':''}</div>
+   <h3 class="sec">其他</h3><div class="col"><button class="btn" data-intro>重看開場動畫</button><button class="btn" data-tut>重看新手引導</button><button class="btn ghost danger-t" data-reset>重新開始遊戲</button></div>
+   <p class="hint ver">OC Shimeji v4.2・存檔版本 ${OC.Store.VER}</p>`};
+  const s=UI.sheet(body(),{full:true,title:'設定',icon:'gear'});const re=()=>s.update(body());
+  s.el.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.classList.contains('sh-x'))return;
+   if(b.dataset.perf){st.perf=b.dataset.perf;OC.R.resize();OC.Store.save();re()}
+   else if(b.dataset.c){st.custom[b.dataset.c]=+b.dataset.v;OC.R.resize();OC.Store.save();re()}
    else if(b.dataset.motion){st.motion=b.dataset.motion;applyTheme();OC.Store.save();re()}
    else if(b.dataset.theme){st.theme=b.dataset.theme;applyTheme();OC.Store.save();re()}
-   else if(b.hasAttribute('data-exp')){this.download(await OC.Store.exportAll(),`oc-shimeji-backup-${U.dayKey()}.json`)}
-   else if(b.hasAttribute('data-imp')){const t=await this.pickFile('.json,application/json');if(t)try{await OC.Store.importAll(t)}catch(err){UI.toast(err.message,'warn')}}
+   else if(b.dataset.cine){st.cine=b.dataset.cine;OC.Store.save();re()}
+   else if(b.hasAttribute('data-exp')){U.buzz(8);this.download(await OC.Store.exportAll(),`oc-shimeji-backup-${U.dayKey()}.json`)}
+   else if(b.hasAttribute('data-imp')){const t=await this.pickFile('.json,application/json');if(t)try{if(await UI.confirm({title:'還原這份備份？',msg:'目前的進度會先存成快照，之後可以在「每日自動快照」找回。',ok:'還原'}))await OC.Store.importAll(t)}catch(err){UI.toast(err.message,'warn')}}
+   else if(b.hasAttribute('data-snaps')){this.snapSheet()}
+   else if(b.hasAttribute('data-gc')){const n=await OC.Store.gc();UI.toast(n?`清理了 ${n} 個沒有使用的素材`:'沒有需要清理的素材','check')}
    else if(b.hasAttribute('data-legacy')){const n=await OC.Store.importLegacy();Sim.sync();UI.toast(`匯入了 ${n} 位夥伴（已存在的不重複）`,'check')}
    else if(b.hasAttribute('data-intro')){s.close();OC.Intro.replay()}
    else if(b.hasAttribute('data-tut')){s.close();OC.Tutorial.start()}
    else if(b.hasAttribute('data-petset')){s.close();OC.PetUI.open()}
-   else if(b.dataset.cine){st.cine=b.dataset.cine;OC.Store.save();re()}
-   else if(b.hasAttribute('data-reset')){if(await UI.confirm({title:'重新開始？',msg:'目前的島嶼、夥伴與進度都會清除。建議先匯出備份。',ok:'清除並重新開始',danger:true}))OC.Store.reset()}});
+   else if(b.hasAttribute('data-reset')){if(await UI.confirm({title:'重新開始？',msg:'目前的島嶼、夥伴與進度都會清除（每日快照仍會保留）。建議先匯出備份。',ok:'清除並重新開始',danger:true})){await OC.Store.snapshot('before-reset');OC.Store.reset()}}});
   s.el.addEventListener('change',e=>{const k=e.target.dataset.s;if(!k)return;st[k]=e.target.checked;OC.Store.save()})},
+ /* 每日快照清單 */
+ async snapSheet(){const L=await OC.Store.snapshots();const T={auto:'每日自動','before-import':'匯入前','before-restore':'還原前','before-reset':'重新開始前'};
+  const s=UI.sheet(L.length?L.map(x=>`<div class="qrow"><span class="q-i">${ic('book',26)}</span><div><b>${new Date(x.at).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</b><small>${T[x.tag]||x.tag}・${x.chars} 位夥伴</small></div><button class="btn sm" data-snap="${esc(x.k)}">還原</button></div>`).join('')+'<p class="hint">每天自動保留一份，最多 7 份。還原前會先把目前進度存成快照。</p>':'<p class="empty">還沒有快照（遊戲開啟後會自動建立）</p>',{title:'每日快照',icon:'book'});
+  s.el.addEventListener('click',async e=>{const b=e.target.closest('[data-snap]');if(!b)return;if(await UI.confirm({title:'還原這份快照？',msg:'遊戲會重新載入。',ok:'還原'}))try{await OC.Store.restoreSnapshot(b.dataset.snap)}catch(err){UI.toast(err.message,'warn')}})},
  download(text,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);if(OC.Native.has())OC.Native.saveFile(name,text);UI.toast('已匯出','check')},
  pickFile(accept,asData){return new Promise(res=>{const i=$('#fileIn');i.accept=accept;i.value='';i.onchange=()=>{const f=i.files[0];if(!f){res(null);return}const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);asData?r.readAsDataURL(f):r.readAsText(f)};i.click()})},
  /* ================= 事件綁定 ================= */

@@ -1068,84 +1068,149 @@ OC.Content=C;
 
 </script>
 <script data-src="core/store.js">
-/* OC Shimeji v4 · 存檔、版本遷移、素材資料庫、舊版 3.2 匯入 */
+/* OC Shimeji v4.2 · 存檔核心
+   ─ 單一存檔物件 OC.S（localStorage 'ocs4.save'），大型素材（圖片、動畫格）放 IndexedDB 'ocs4'/kv
+   ─ 版本遷移（MIGRATIONS）、載入時驗證與修復（validate）、主存檔→備援→每日快照的復原鏈
+   ─ 完整備份與角色包一定包含實際素材（不會只有 JSON 或失效路徑）
+   詳見 docs/ARCHITECTURE.md「資料與存檔」 */
 (function(OC){'use strict';
 const {U}=OC;
-const KEY='ocs4.save',BAK='ocs4.save.bak',VER=4;
+const KEY='ocs4.save',BAK='ocs4.save.bak',CORRUPT='ocs4.corrupt',VER=42;
 
-/* ---------- 素材資料庫（IndexedDB；匯入圖片等大型資料不放 localStorage） ---------- */
+/* ---------- IndexedDB：素材（kv）與每日快照（snap） ---------- */
 const Assets={db:null,mem:new Map(),
- open(){if(this.db)return Promise.resolve(this.db);return new Promise(res=>{try{const r=indexedDB.open('ocs4',1);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv')};r.onsuccess=()=>{this.db=r.result;res(this.db)};r.onerror=()=>res(null);r.onblocked=()=>res(null)}catch(e){res(null)}})},
- async get(k){if(this.mem.has(k))return this.mem.get(k);const d=await this.open();if(!d)return null;return new Promise(res=>{try{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>{if(q.result!=null)this.mem.set(k,q.result);res(q.result??null)};q.onerror=()=>res(null)}catch(e){res(null)}})},
- async put(k,v){this.mem.set(k,v);const d=await this.open();if(!d)return;return new Promise(res=>{try{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=res}catch(e){res()}})},
- async del(k){this.mem.delete(k);const d=await this.open();if(!d)return;return new Promise(res=>{try{const t=d.transaction('kv','readwrite');t.objectStore('kv').delete(k);t.oncomplete=res;t.onerror=res}catch(e){res()}})}};
+ open(){if(this.db)return Promise.resolve(this.db);if(this._p)return this._p;return this._p=new Promise(res=>{try{const r=indexedDB.open('ocs4',2);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('snap'))d.createObjectStore('snap')};
+  r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>{try{this.db.close()}catch(e){}this.db=null;this._p=null};res(this.db)};r.onerror=()=>res(null);r.onblocked=()=>res(null)}catch(e){res(null)}})},
+ tx(store,mode,fn){return this.open().then(d=>new Promise(res=>{if(!d){res(null);return}try{const t=d.transaction(store,mode);const s=t.objectStore(store);const q=fn(s);t.oncomplete=()=>res(q&&q.result!==undefined?q.result:true);t.onerror=()=>res(null);t.onabort=()=>res(null)}catch(e){res(null)}}))},
+ async get(k){if(k==null)return null;if(this.mem.has(k))return this.mem.get(k);const v=await this.tx('kv','readonly',s=>s.get(k));if(v!=null&&v!==true)this.mem.set(k,v);return v===true?null:v??null},
+ /* 同步讀取（已載入記憶體的素材），讓介面不必等待、不會閃一下 */
+ peek(k){return this.mem.get(k)||null},
+ async put(k,v){this.mem.set(k,v);await this.tx('kv','readwrite',s=>s.put(v,k))},
+ async del(k){this.mem.delete(k);await this.tx('kv','readwrite',s=>s.delete(k))},
+ async keys(){const r=await this.tx('kv','readonly',s=>s.getAllKeys());return Array.isArray(r)?r:[...this.mem.keys()]},
+ async preload(keys){for(const k of keys)if(k&&!this.mem.has(k))await this.get(k)}};
 
-/* ---------- 預設值 ---------- */
+/* ---------- 效能預設（見 Settings → 畫質與效能） ---------- */
 const PERF={
- quality:{fps:60,scale:2.5,shadows:2,particles:1,ambient:2,cloudShadow:1,maxChars:12,bgTick:1},
- balanced:{fps:60,scale:1.75,shadows:1,particles:.6,ambient:1,cloudShadow:1,maxChars:10,bgTick:1},
- battery:{fps:30,scale:1.15,shadows:1,particles:.2,ambient:0,cloudShadow:0,maxChars:6,bgTick:.5}};
+ quality:{fps:60,scale:2.5,shadows:2,particles:1,weather:1,ambient:2,cloudShadow:1,animDetail:2,maxChars:12,bgTick:1},
+ balanced:{fps:60,scale:1.75,shadows:1,particles:.6,weather:1,ambient:1,cloudShadow:1,animDetail:1,maxChars:10,bgTick:1},
+ battery:{fps:30,scale:1.15,shadows:0,particles:.2,weather:1,ambient:0,cloudShadow:0,animDetail:0,maxChars:6,bgTick:.25}};
 const defaults=()=>({v:VER,created:Date.now(),lastSeen:Date.now(),
- settings:{theme:'system',motion:'system',perf:'balanced',custom:Object.assign({},PERF.balanced),bubbles:true,haptics:true,names:true,negEvents:true,romance:true,autoSocial:true,petSize:100,petMax:2,petBattery:false},
+ settings:{theme:'system',motion:'system',perf:'balanced',custom:Object.assign({},PERF.balanced),bubbles:true,haptics:true,names:true,negEvents:true,romance:true,autoSocial:true,cine:'full',petSize:100,petMax:2,petBattery:false,pet:null},
  flags:{introSeen:false,started:false,tutorial:0,tutorialDone:false,houseChosen:false},
- world:{loc:'home',house:null,houseFurn:null,props:{},unlocked:['home','house','plaza','beach','forest'],timeOffset:0,weather:null,garden:{}},
+ world:{loc:'home',house:null,houseFurn:null,builds:[],props:{},unlocked:['home','house','plaza','beach','forest'],timeOffset:0,weather:null,garden:{}},
  chars:[],activeId:null,petIds:[],
  rel:{},
- inv:{},coins:120,gems:0,
+ inv:{},coins:120,gems:0,xp:0,
  codex:{},quests:{day:'',list:[],weekly:null,streak:0,last:''},
- log:[],pending:[],migrated:null});
+ creations:[],events:[],eventLog:[],
+ log:[],pending:[],ui:{},shop:null,migrated:null});
 
-const Store={S:null,_t:0,
- load(){let s=null;try{s=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
-  if(!s){try{s=JSON.parse(localStorage.getItem(BAK)||'null')}catch(e){}}
-  const d=defaults();
-  if(s&&typeof s==='object'){s=this.migrate(s);
-   /* 深合併設定，確保新欄位存在 */
-   for(const k of ['settings','flags','world','quests'])s[k]=Object.assign({},d[k],s[k]||{});
-   s.settings.custom=Object.assign({},PERF.balanced,s.settings.custom||{});
-   for(const k of Object.keys(d))if(s[k]===undefined)s[k]=d[k];
-   this.S=s}else this.S=d;
-  OC.S=this.S;return this.S},
- migrate(s){if(!s.v||s.v<VER){s.v=VER}return s},
+/* ---------- 版本遷移：每一步只做那個版本需要的補欄位 ---------- */
+const MIGRATIONS={
+ 4:s=>{s.creations=s.creations||[];s.events=s.events||[];s.eventLog=s.eventLog||[];s.xp=s.xp||0;s.gems=s.gems||0;s.ui=s.ui||{};s.world.builds=s.world.builds||[]},
+ 41:s=>{for(const c of s.chars||[]){c.wear=c.wear||[];if(c.anim===undefined)c.anim=null}s.settings.cine=s.settings.cine||'full'}};
+
+const Store={S:null,_t:0,VER,KEY,PERF,defaults,Assets,loadInfo:{src:'new',fixes:[]},
+ /* 讀取：主存檔 → 備援；兩者都壞時保留原文到 ocs4.corrupt，開機後再嘗試從快照復原 */
+ load(){let s=null,src='new';const raw=localStorage.getItem(KEY);
+  if(raw){try{s=JSON.parse(raw);src='main'}catch(e){try{localStorage.setItem(CORRUPT,raw)}catch(_){}}}
+  if(!s){const b=localStorage.getItem(BAK);if(b){try{s=JSON.parse(b);src='backup'}catch(e){}}}
+  if(s&&typeof s!=='object')s=null;
+  this.S=s?this.migrate(s):defaults();this.loadInfo={src:s?src:(raw?'corrupt':'new'),fixes:[]};OC.S=this.S;return this.S},
+ migrate(s){const d=defaults();
+  for(const k of ['settings','flags','world','quests'])s[k]=Object.assign({},d[k],s[k]&&typeof s[k]==='object'?s[k]:{});
+  s.settings.custom=Object.assign({},PERF.balanced,s.settings.custom||{});
+  for(const k of Object.keys(d))if(s[k]===undefined||s[k]===null&&d[k]!==null)s[k]=d[k];
+  const from=+s.v||4;for(const v of Object.keys(MIGRATIONS).map(Number).sort((a,b)=>a-b))if(from<=v)MIGRATIONS[v](s);
+  s.v=VER;return s},
+ /* 驗證與修復（開機、匯入、匯出前執行）；回傳修正清單 */
+ validate(S=this.S){const fix=[];const C=OC.Content;const arr=k=>{if(!Array.isArray(S[k])){S[k]=[];fix.push(k+' 不是陣列')}};
+  ['chars','petIds','log','pending','creations','events','eventLog'].forEach(arr);
+  /* 角色：唯一 ID、欄位完整 */
+  const ids=new Set();S.chars=S.chars.filter(c=>c&&typeof c==='object');
+  for(const c of S.chars){if(!c.id||typeof c.id!=='string'||ids.has(c.id)){const old=c.id;c.id=U.uid('c');fix.push(`角色 ID 重複或缺少（${old}）→ ${c.id}`)}ids.add(c.id);if(typeof c.name!=='string'||!c.name.trim())c.name='夥伴';OC.Chars.ensure(c);c.wear=Array.isArray(c.wear)?c.wear:[]}
+  if(!ids.has(S.activeId))S.activeId=S.chars[0]?S.chars[0].id:null;
+  S.petIds=[...new Set(S.petIds.filter(id=>ids.has(id)))];
+  /* 關係：兩端都要存在 */
+  for(const k of Object.keys(S.rel||{})){const [a,b]=k.split('|');if(!ids.has(a)||!ids.has(b)){delete S.rel[k];fix.push('移除失效關係 '+k)}}
+  S.pending=S.pending.filter(p=>p&&(p.k==='trait'?ids.has(p.cid):ids.has(p.a)&&ids.has(p.b)));
+  /* 經濟與背包：不得負數、非整數或未知物品 */
+  const coins=Math.floor(+S.coins);if(!(coins>=0)){fix.push('星幣異常 '+S.coins);S.coins=0}else S.coins=coins;S.gems=Math.max(0,Math.floor(+S.gems)||0);S.xp=Math.max(0,Math.floor(+S.xp)||0);
+  const crIds=new Set(S.creations.map(c=>c&&c.id));
+  for(const [id,q] of Object.entries(S.inv||{})){const n=Math.floor(+q);if(!(C.ITEM[id]||crIds.has(id))||!(n>0)){delete S.inv[id];if(!(n>0)&&(C.ITEM[id]||crIds.has(id)))continue;fix.push('移除未知物品 '+id)}else S.inv[id]=Math.min(999,n)}
+  /* 家具、建築 */
+  const W=S.world;if(W.houseFurn)W.houseFurn=W.houseFurn.filter(f=>f&&f.id&&Number.isFinite(+f.x)&&Number.isFinite(+f.z)&&(!String(f.k).startsWith('cr')||crIds.has(f.k)));
+  W.builds=(W.builds||[]).filter(b=>b&&crIds.has(b.cid)&&Number.isFinite(+b.x)&&Number.isFinite(+b.z));
+  if(W.house&&!(Number.isFinite(+W.house.x)&&Number.isFinite(+W.house.z)))W.house=null;
+  for(const ch of S.chars)ch.wear=ch.wear.filter(w=>w&&crIds.has(w.id));
+  /* 日誌長度 */
+  if(S.log.length>240)S.log.length=240;if(S.eventLog.length>80)S.eventLog.length=80;
+  if(fix.length)console.info('[store] 修復',fix);return fix},
  isNew(){return !localStorage.getItem(KEY)&&!localStorage.getItem(BAK)},
  save(){clearTimeout(this._t);this._t=setTimeout(()=>this.flush(),400)},
- flush(){clearTimeout(this._t);if(!this.S)return;this.S.lastSeen=Date.now();try{const j=JSON.stringify(this.S);localStorage.setItem(KEY,j);
-  /* 每 10 分鐘另存一份備援，避免寫入中斷造成存檔損毀 */
-  const now=Date.now();if(!this._bk||now-this._bk>6e5){this._bk=now;localStorage.setItem(BAK,j)}}catch(e){console.warn('save failed',e);OC.UI&&OC.UI.toast&&OC.UI.toast('儲存空間不足，請到設定匯出備份','warn')}
-  try{OC.Native&&OC.Native.syncPets&&OC.Native.syncPets()}catch(e){}},
- reset(){localStorage.removeItem(KEY);localStorage.removeItem(BAK);location.reload()},
- PERF,defaults,Assets,
- perf(){const st=this.S.settings;const p=st.perf==='custom'?st.custom:PERF[st.perf]||PERF.balanced;const reduce=st.motion==='reduce'||(st.motion==='system'&&matchMedia('(prefers-reduced-motion: reduce)').matches);return Object.assign({},p,{reduce,particles:reduce?Math.min(p.particles,.25):p.particles})},
+ flush(){clearTimeout(this._t);if(!this.S||this.locked)return false;this.S.lastSeen=Date.now();let j;try{j=JSON.stringify(this.S)}catch(e){console.error('[store] 序列化失敗',e);return false}
+  const write=()=>{localStorage.setItem(KEY,j);const now=Date.now();if(!this._bk||now-this._bk>6e5){this._bk=now;localStorage.setItem(BAK,j)}};
+  try{write()}catch(e){/* 空間不足：先精簡日誌與回憶再試一次 */this.shrink();try{j=JSON.stringify(this.S);write()}catch(e2){console.warn('save failed',e2);OC.UI&&OC.UI.toast&&OC.UI.toast('儲存空間不足，請到設定匯出備份','warn');return false}}
+  try{OC.Native&&OC.Native.syncPets&&OC.Native.syncPets()}catch(e){}return true},
+ shrink(){const S=this.S;S.log.length=Math.min(S.log.length,80);S.eventLog.length=Math.min(S.eventLog.length,20);for(const c of S.chars){if(c.memories.length>30)c.memories.length=30}for(const r of Object.values(S.rel))if(r.mem&&r.mem.length>8)r.mem.length=8;try{localStorage.removeItem(CORRUPT)}catch(e){}},
+ /* 寫入新存檔後重新載入：先鎖住，避免 pagehide 時把舊的記憶體狀態寫回去 */
+ reload(){this.locked=true;clearTimeout(this._t);location.reload()},
+ reset(){localStorage.removeItem(KEY);localStorage.removeItem(BAK);this.reload()},
+ perf(){const st=this.S.settings;const p=Object.assign({},PERF.balanced,st.perf==='custom'?st.custom:PERF[st.perf]||PERF.balanced);const reduce=st.motion==='reduce'||(st.motion==='system'&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  if(reduce){p.particles=Math.min(p.particles,.25);p.ambient=Math.min(p.ambient,1)}p.reduce=reduce;return p},
 
- /* ---------- 完整備份（含圖片素材） ---------- */
- async exportAll(){const S=JSON.parse(JSON.stringify(this.S));const assets={};for(const c of S.chars){if(c.img){const v=await Assets.get(c.img);if(v)assets[c.img]=v}}
-  return JSON.stringify({app:'oc-shimeji',kind:'backup',v:VER,at:Date.now(),save:S,assets})},
- async importAll(text){const o=JSON.parse(text);if(!o||o.app!=='oc-shimeji'||!o.save)throw new Error('不是 OC Shimeji 備份檔');
-  for(const [k,v] of Object.entries(o.assets||{}))if(typeof v==='string'&&/^data:image\//.test(v))await Assets.put(k,v);
-  localStorage.setItem(BAK,localStorage.getItem(KEY)||'');localStorage.setItem(KEY,JSON.stringify(this.migrate(o.save)));location.reload()},
- async exportChar(id){const c=this.S.chars.find(c=>c.id===id);if(!c)return null;const o={app:'oc-shimeji',kind:'char',v:VER,char:JSON.parse(JSON.stringify(c)),assets:{}};
-  o.char.memories=[];o.char.rel=undefined;if(c.img){const v=await Assets.get(c.img);if(v)o.assets[c.img]=v}return JSON.stringify(o)},
- async importChar(text){const o=JSON.parse(text);if(!o||o.app!=='oc-shimeji'||o.kind!=='char'||!o.char)throw new Error('不是角色檔');
-  const c=o.char;const old=c.img;c.id=U.uid('c');if(old&&o.assets&&o.assets[old]){c.img='img_'+c.id;await Assets.put(c.img,o.assets[old])}else c.img=null;return c},
+ /* ---------- 每日快照（IndexedDB，保留 7 份） ---------- */
+ async snapshot(tag='auto'){if(!this.S)return;const k=new Date().toISOString().slice(0,10)+(tag==='auto'?'':'_'+tag+'_'+Date.now());await Assets.tx('snap','readwrite',s=>s.put({at:Date.now(),tag,v:VER,chars:this.S.chars.length,save:JSON.stringify(this.S)},k));
+  const keys=(await Assets.tx('snap','readonly',s=>s.getAllKeys()))||[];if(Array.isArray(keys)&&keys.length>7){keys.sort();for(const old of keys.slice(0,keys.length-7))await Assets.tx('snap','readwrite',s=>s.delete(old))}},
+ async snapshots(){const keys=(await Assets.tx('snap','readonly',s=>s.getAllKeys()))||[];const out=[];if(!Array.isArray(keys))return out;for(const k of keys.sort().reverse()){const v=await Assets.tx('snap','readonly',s=>s.get(k));if(v&&v!==true)out.push({k,at:v.at,tag:v.tag,chars:v.chars})}return out},
+ async restoreSnapshot(k){const v=await Assets.tx('snap','readonly',s=>s.get(k));if(!v||v===true||!v.save)throw new Error('找不到這份快照');JSON.parse(v.save);await this.snapshot('before-restore');localStorage.setItem(BAK,localStorage.getItem(KEY)||'');localStorage.setItem(KEY,v.save);this.reload()},
+ /* 開機時：若主存檔損毀而備援也沒有，從最新快照復原 */
+ async recover(){if(this.loadInfo.src!=='corrupt')return false;const list=await this.snapshots();if(!list.length)return false;const v=await Assets.tx('snap','readonly',s=>s.get(list[0].k));if(!v||!v.save)return false;try{this.S=this.migrate(JSON.parse(v.save));OC.S=this.S;this.loadInfo.src='snapshot';return true}catch(e){return false}},
+
+ /* ---------- 素材參照：存檔中所有用到的圖片／動畫格 ---------- */
+ refs(S=this.S){const set=new Set();for(const c of S.chars){if(c.img)set.add(c.img);if(c.anim&&c.anim.frames)for(const L of Object.values(c.anim.frames))(L||[]).forEach(k=>set.add(k))}
+  for(const c of S.creations||[]){if(c.img)set.add(c.img);if(c.frames)for(const L of Object.values(c.frames))(L||[]).forEach(k=>set.add(k))}return[...set]},
+ /* 清除沒有被任何存檔或快照使用的素材 */
+ async gc(){const used=new Set(this.refs());for(const s of await this.snapshots()){const v=await Assets.tx('snap','readonly',st=>st.get(s.k));try{this.refs(JSON.parse(v.save)).forEach(k=>used.add(k))}catch(e){}}
+  let n=0;for(const k of await Assets.keys()){if(!used.has(k)){await Assets.del(k);n++}}return n},
+
+ /* ---------- 完整備份（存檔＋所有素材） ---------- */
+ async exportAll(){this.validate();const S=JSON.parse(JSON.stringify(this.S));const assets={},missing=[];for(const k of this.refs(S)){const v=await Assets.get(k);if(v)assets[k]=v;else missing.push(k)}
+  return JSON.stringify({app:'oc-shimeji',kind:'backup',v:VER,at:Date.now(),save:S,assets,missing})},
+ async importAll(text){const o=JSON.parse(text);if(!o||o.app!=='oc-shimeji'||o.kind!=='backup'||!o.save||typeof o.save!=='object')throw new Error('不是 OC Shimeji 完整備份檔');
+  if(!Array.isArray(o.save.chars))throw new Error('備份內容不完整（沒有角色資料）');
+  for(const [k,v] of Object.entries(o.assets||{}))if(typeof k==='string'&&k.length<80&&typeof v==='string'&&/^data:image\//.test(v))await Assets.put(k,v);
+  await this.snapshot('before-import');const s=this.migrate(o.save);const keep=this.S;this.S=s;OC.S=s;this.validate(s);this.S=keep;OC.S=keep;
+  localStorage.setItem(BAK,localStorage.getItem(KEY)||'');localStorage.setItem(KEY,JSON.stringify(s));this.reload()},
+ /* ---------- 角色包：角色＋圖片＋動畫格＋穿戴中的工坊飾品 ---------- */
+ async exportChar(id){const c=this.S.chars.find(c=>c.id===id);if(!c)return null;const ch=JSON.parse(JSON.stringify(c));ch.memories=[];ch.counters={};ch.wishes=[];
+  const o={app:'oc-shimeji',kind:'char',v:VER,char:ch,assets:{},creations:[]};const keys=[];if(c.img)keys.push(c.img);if(c.anim&&c.anim.frames)for(const L of Object.values(c.anim.frames))keys.push(...(L||[]));
+  for(const w of c.wear||[]){const cr=(this.S.creations||[]).find(x=>x.id===w.id);if(cr){o.creations.push(JSON.parse(JSON.stringify(cr)));if(cr.img)keys.push(cr.img)}}
+  for(const k of keys){const v=await Assets.get(k);if(v)o.assets[k]=v}return JSON.stringify(o)},
+ /* 匯入角色包：一律給新 ID、新素材鍵，不會覆蓋現有角色 */
+ async importChar(text){const o=JSON.parse(text);if(!o||o.app!=='oc-shimeji'||o.kind!=='char'||!o.char||typeof o.char!=='object')throw new Error('不是角色檔');
+  const A=o.assets||{};const remap=async k=>{if(!k||typeof A[k]!=='string'||!/^data:image\//.test(A[k]))return null;const nk='img_'+U.uid('a');await Assets.put(nk,A[k]);return nk};
+  const c=o.char;c.id=U.uid('c');c.img=await remap(c.img);if(c.kind==='image'&&!c.img)c.kind='cat';
+  if(c.anim&&c.anim.frames){const F={};for(const [st,L] of Object.entries(c.anim.frames)){F[st]=[];for(const k of L||[]){const nk=await remap(k);if(nk)F[st].push(nk)}}c.anim.frames=F}
+  const crMap={};for(const cr of o.creations||[]){if(!cr||!cr.id)continue;const n=Object.assign({},cr,{id:U.uid('cr'),by:cr.by||'匯入'});n.img=await remap(cr.img);if(n.img){OC.S.creations.unshift(n);OC.Creations&&OC.Creations.imgs.set(n.id,Assets.peek(n.img));crMap[cr.id]=n.id}}
+  c.wear=(c.wear||[]).map(w=>crMap[w.id]?Object.assign({},w,{id:crMap[w.id]}):null).filter(Boolean);c.memories=[];c.loc='home';c.x=null;return OC.Chars.ensure(c)},
 
  /* ---------- 舊版 3.2 存檔匯入（不刪除舊資料，可重複執行） ---------- */
  hasLegacy(){try{return !!localStorage.getItem('ocs.v1')}catch(e){return false}},
  async readLegacy(){const J=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
   const cfg=J('ocs.v1')||{},eco=J('ocs.eco.v1')||{},items=J('ocs.items.v1')||{},l29=cfg.l29&&cfg.l29.ch||{},comm=cfg.community||{};
-  /* IndexedDB 中的自創角色 */
   const recs=await new Promise(res=>{try{const r=indexedDB.open('oc-shimeji');r.onsuccess=()=>{const db=r.result;if(!db.objectStoreNames.contains('chars')){db.close();res([]);return}try{const q=db.transaction('chars').objectStore('chars').getAll();q.onsuccess=()=>{res(q.result||[]);db.close()};q.onerror=()=>{res([]);db.close()}}catch(e){res([]);db.close()}};r.onerror=()=>res([]);r.onupgradeneeded=()=>{}}catch(e){res([])}});
   return {cfg,eco,items,l29,comm,recs}},
  async importLegacy(){const L=await this.readLegacy(),S=this.S,C=OC.Content,out=[];
   const pers=d=>{const sl=(d&&d.pers&&d.pers.sl)||{};return{sliders:Object.fromEntries(C.SLIDERS.map(s=>[s.k,Number.isFinite(+sl[s.k])?+sl[s.k]:50])),traits:((d&&d.pers&&d.pers.traits)||[]).filter(t=>C.TRAIT[t]).slice(0,6)}};
   for(const d of OC.DEMOS){const o=(L.cfg.overrides||{})[d.id]||{};const look=Object.assign({},d.look,o.look||{});if(o.body)look.body=o.body;
    const p=pers(o.data);const x=L.l29[d.id]||{};
-   const ch=OC.Chars.make({id:d.id,kind:'cat',name:o.name||d.name,look,demo:d.id,profile:Object.assign({},o.data||{}),sliders:p.sliders,traits:(p.traits.length?p.traits:OC.Chars.demoTraits(d.id)).concat((x.traits||[]).filter(t=>C.TRAIT[t])),quirks:x.quirks});
-   out.push(ch)}
+   out.push(OC.Chars.make({id:d.id,kind:'cat',name:o.name||d.name,look,demo:d.id,profile:Object.assign({},o.data||{}),sliders:p.sliders,traits:(p.traits.length?p.traits:OC.Chars.demoTraits(d.id)).concat((x.traits||[]).filter(t=>C.TRAIT[t])),quirks:x.quirks}))}
   for(const r of L.recs){if(!r||!r.id)continue;let img=null;
    if(r.blob instanceof Blob){try{const u=await new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result);f.onerror=rej;f.readAsDataURL(r.blob)});img='img_'+r.id;await Assets.put(img,u)}catch(e){img=null}}
    const p=pers(r.data);const x=L.l29[r.id]||{};
    out.push(OC.Chars.make({id:r.id,kind:img?'image':'cat',name:r.name||'夥伴',look:r.look||{},img,facing:r.facing||'right',profile:Object.assign({},r.data||{}),sliders:p.sliders,traits:p.traits.concat((x.traits||[]).filter(t=>C.TRAIT[t])),quirks:x.quirks}))}
-  /* 合併：已存在的角色不覆蓋 */
   for(const c of out)if(!S.chars.some(x=>x.id===c.id))S.chars.push(c);
   const sel=Array.isArray(L.comm.selected)?L.comm.selected:null;if(sel)S.chars.forEach(c=>{if(out.includes(c))c.onIsland=sel.includes(c.id)||sel.length===0});
   S.coins=Math.max(S.coins,Math.floor(+L.eco.coins||0));S.gems=Math.max(S.gems,Math.floor(+L.eco.gems||0));
@@ -1153,8 +1218,7 @@ const Store={S:null,_t:0,
   if(L.cfg.active&&S.chars.some(c=>c.id===L.cfg.active))S.activeId=L.cfg.active;
   S.migrated={from:'3.2',at:Date.now(),chars:out.length};
   for(const c of S.chars)OC.Chars.ensure(c);
-  this.flush();return out.length}
-};
+  this.flush();return out.length}};
 OC.Store=Store;
 })(window.OC);
 
@@ -1697,7 +1761,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
  /* =================== 每格繪製 =================== */
  frame(dt){const ctx=this.ctx,cam=this.cam,perf=OC.Store.perf();this.t+=dt;this.perf=perf;cam.update();
   if(cam.shake>0){cam.shake=Math.max(0,cam.shake-dt*2)}
-  const key=cam.key()+':'+Env.ver+':'+this.sc.id+':'+(this.sc.ver||0);
+  const key=cam.key()+':'+Env.ver+':'+this.sc.id+':'+(this.sc.ver||0)+':'+perf.shadows;
   if(key!==this.skey){this.skey=key;this.drawStatic()}
   ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(this.static,0,0);ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
   if(this.sc.kind!=='room'){this.drawSkyLive(ctx);this.drawWater(ctx);if(perf.cloudShadow&&!Env.isNight())this.drawCloudShadows(ctx)}
@@ -1744,13 +1808,13 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
    this.extrude(g,L.pts,0,raise,U.rgb(U.shade(U.hex(col),-.32)))}
   const q=this.fillPoly(g,L.pts,raise,col);
   if(this.perf.shadows&&L.col!=='sand'){/* Low-Poly 地面色塊：在多邊形內以世界格線切三角形，依雜訊微調明暗 */
-   g.save();g.clip();const cam=this.cam,b=this.sc.bounds,C=U.hex(col);const step=L.col==='stone'?1.2:1.7;
-   const x0=Math.floor((b[0]-3)/step)*step,z0=Math.floor((b[1]-4)/step)*step;
-   for(let z=z0;z<b[3]+3;z+=step)for(let x=x0;x<b[2]+3;x+=step){const n1=U.noise2(x*.21,z*.21),n2=U.noise2(x*.21+7,z*.21+3);
-    const a=cam.p(x,raise,z),bb=cam.p(x+step,raise,z),c=cam.p(x+step,raise,z+step),d=cam.p(x,raise,z+step);
-    if(c.y<0||a.y>this.H||c.x<-60||d.x>this.W+60&&a.x>this.W+60)continue;
-    g.fillStyle=U.rgb(U.shade(C,(n1-.5)*.16));g.beginPath();g.moveTo(a.x,a.y);g.lineTo(bb.x,bb.y);g.lineTo(d.x,d.y);g.fill();
-    g.fillStyle=U.rgb(U.shade(C,(n2-.5)*.16-.02));g.beginPath();g.moveTo(bb.x,bb.y);g.lineTo(c.x,c.y);g.lineTo(d.x,d.y);g.fill()}
+   g.save();g.clip();const cam=this.cam;
+   /* 色塊顏色只算一次（快取在多邊形上）；每次重畫只投影每個格點一次 */
+   const F=L._fc||(L._fc=facetGrid(this.sc.bounds,col,L.col==='stone'?1.2:1.7));const P=F.pts,nx=F.nx;
+   for(let i=0;i<P.length;i++){const q=cam.p(P[i][0],raise,P[i][1]);F.sx[i]=q.x;F.sy[i]=q.y}
+   for(let j=0;j<F.nz-1;j++)for(let i=0;i<nx-1;i++){const a=j*nx+i,b=a+1,d=a+nx,c=d+1;if(F.sy[c]<0||F.sy[a]>this.H||F.sx[b]<-60||F.sx[a]>this.W+60)continue;
+    g.fillStyle=F.c1[a];g.beginPath();g.moveTo(F.sx[a],F.sy[a]);g.lineTo(F.sx[b],F.sy[b]);g.lineTo(F.sx[d],F.sy[d]);g.fill();
+    g.fillStyle=F.c2[a];g.beginPath();g.moveTo(F.sx[b],F.sy[b]);g.lineTo(F.sx[c],F.sy[c]);g.lineTo(F.sx[d],F.sy[d]);g.fill()}
    g.restore()}
   if(L.col==='sand'){/* 沙灘濕潤邊 */g.strokeStyle='rgba(205,190,150,.55)';g.lineWidth=3;g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y+1.5):g.moveTo(x,y+1.5));g.closePath();g.stroke()}},
  extrude(g,pts,y0,h,fill){const cam=this.cam,n=pts.length;const faces=[];
@@ -1858,7 +1922,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   OC.Rig.draw(ctx,a,q.x,q.y,s,dt)},
  /* ---------- 粒子 ---------- */
  /* 小鳥：在地上跳、啄食；有夥伴靠近就飛走，過一陣子再回來 */
- birds(ctx,dt){if(!this.perf.ambient||this.sc.kind==='room')return;const sc=this.sc;if(this._bsc!==sc.id){this._bsc=sc.id;this.bl=[];const n=sc.id==='beach'?4:3;for(let i=0;i<n;i++){const p=sc.randomPoint();this.bl.push({x:p.x,z:p.z,y:0,vy:0,vx:0,f:1,t:Math.random()*3,sea:sc.id==='beach',gone:0})}}
+ birds(ctx,dt){if(!this.perf.ambient||this.sc.kind==='room'||this.perf.particles===0)return;const sc=this.sc;if(this._bsc!==sc.id){this._bsc=sc.id;this.bl=[];const n=sc.id==='beach'?4:3;for(let i=0;i<n;i++){const p=sc.randomPoint();this.bl.push({x:p.x,z:p.z,y:0,vy:0,vx:0,f:1,t:Math.random()*3,sea:sc.id==='beach',gone:0})}}
   const cam=this.cam;for(const b of this.bl){b.t+=dt;if(b.gone>0){b.gone-=dt;b.y+=dt*2.2;b.x+=b.vx*dt;if(b.gone<=0){const p=sc.randomPoint();b.x=p.x;b.z=p.z;b.y=4;b.land=1}else{this.drawBird(ctx,b,true);continue}}
    if(b.land){b.y=Math.max(0,b.y-dt*3);if(b.y<=0)b.land=0}
    for(const a of this.actors){if(Math.hypot(a.x-b.x,a.z-b.z)<1.5&&!b.land){b.gone=6+Math.random()*6;b.vx=(b.x>a.x?1:-1)*U.rnd(1.5,3);break}}
@@ -1900,7 +1964,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   if(!this.vig||this.vig.w!==W||this.vig.h!==H){const c=document.createElement('canvas');c.width=W/2|0;c.height=H/2|0;const g=c.getContext('2d');const gr=g.createRadialGradient(c.width/2,c.height*.55,Math.min(c.width,c.height)*.35,c.width/2,c.height*.55,Math.max(c.width,c.height)*.75);gr.addColorStop(0,'rgba(40,30,50,0)');gr.addColorStop(1,'rgba(40,30,50,.22)');g.fillStyle=gr;g.fillRect(0,0,c.width,c.height);this.vig={c,w:W,h:H}}
   ctx.drawImage(this.vig.c,0,0,W,H)},
  /* ---------- 天氣粒子（螢幕空間） ---------- */
- drawWeather(ctx,dt){const W=this.W,H=this.H,t=this.t,amt=this.perf.particles;if(this.sc.kind==='room'){if(Env.rainy()&&amt>0){/* 窗戶上的雨 */}return}
+ drawWeather(ctx,dt){const W=this.W,H=this.H,t=this.t,amt=this.perf.weather===0?0:this.perf.particles;if(this.sc.kind==='room'){if(Env.rainy()&&amt>0){/* 窗戶上的雨 */}return}
   if(!this.wx)this.wx=[...Array(160)].map(()=>({x:Math.random(),y:Math.random(),s:Math.random()}));
   if(Env.rainy()&&amt>0){const n=Math.floor((Env.wid==='storm'?150:100)*amt);ctx.strokeStyle='rgba(220,232,245,.5)';ctx.lineWidth=1.1;ctx.beginPath();
    for(let i=0;i<n;i++){const p=this.wx[i];p.y+=dt*(1.6+p.s*.8);p.x+=dt*.18*Env.wind;if(p.y>1){p.y-=1;p.x=Math.random()}const x=p.x*W,y=p.y*H,l=10+p.s*8;ctx.moveTo(x,y);ctx.lineTo(x-l*.22*Env.wind,y-l)}ctx.stroke();
@@ -1912,9 +1976,10 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
     else{p.x+=dt*(.03+p.s*.03)*(1+Env.wind);p.y+=dt*.02+Math.sin(t+i)*dt*.01;if(p.x>1.05){p.x=-.05;p.y=Math.random()*.7}const x=p.x*W,y=p.y*H;ctx.globalAlpha=.75;ctx.fillStyle=i%3?'#F7C6D3':'#FFFFFF';ctx.save();ctx.translate(x,y);ctx.rotate(t*2+i);ctx.beginPath();ctx.ellipse(0,0,3.2,1.6,0,0,TAU);ctx.fill();ctx.restore()}}
    ctx.globalAlpha=1}},
  /* ---------- 名字、對話泡泡、情緒符號（畫在色調之後，保持清晰） ---------- */
- drawOverlay(ctx){const showNames=OC.S.settings.names!==false;for(const a of this.actors){if(a.visible===false||!a.ss)continue;const s=a.ss,c=a.c;const top=a.sy-s*1.38*c.scale*(c.kind==='image'?1.05:1)-(a.headOff||0);
+ drawOverlay(ctx){const showNames=OC.S.settings.names!==false;const placed=[];for(const a of [...this.actors].sort((p,q)=>(q.sy||0)-(p.sy||0))){if(a.visible===false||!a.ss)continue;const s=a.ss,c=a.c;const top=a.sy-s*1.38*c.scale*(c.kind==='image'?1.05:1)-(a.headOff||0);
   if(a.emote)drawEmote(ctx,a,a.sx+s*.34,top+s*.12,s,this.t);
-  if(a.bubble&&OC.S.settings.bubbles!==false)drawBubble(ctx,a.bubble,a.sx,top-4,this.t);
+  if(a.bubble&&OC.S.settings.bubbles!==false){const b=a.bubble;const lines=Math.min(3,Math.ceil(b.text.length/12));const w=Math.min(190,b.text.length*13.5+24),h=lines*18+14;let y=top-4;
+   for(let k=0;k<6;k++){const hit=placed.find(r=>Math.abs(r.x-a.sx)<(r.w+w)/2+4&&y-h-12<r.y&&y>r.y-r.h-12);if(!hit)break;y=hit.y-hit.h-16}placed.push({x:a.sx,y,w,h});drawBubble(ctx,b,a.sx,y,this.t)}
   else if(showNames&&(a.focus||a.nameT>0)){const al=a.focus?1:Math.min(1,a.nameT);ctx.globalAlpha=al*.92;const txt=c.name;ctx.font='600 11px "Nunito","Noto Sans TC",sans-serif';const w=ctx.measureText(txt).width+14;
    const y=a.sy+8;rrect(ctx,a.sx-w/2,y,w,18,9);ctx.fillStyle='rgba(255,252,244,.92)';ctx.fill();ctx.fillStyle='#5B4B45';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,a.sx,y+9.5);ctx.textAlign='start';ctx.textBaseline='alphabetic';ctx.globalAlpha=1}}
   /* 地點提示環（佈置、放置房子） */
@@ -1922,6 +1987,9 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   if(OC.Cine)OC.Cine.draw(ctx,this.W,this.H)}};
 
 /* ---------- 小工具 ---------- */
+function facetGrid(b,col,step){const C=U.hex(col);const x0=Math.floor((b[0]-3)/step)*step,z0=Math.floor((b[1]-4)/step)*step;const nx=Math.ceil((b[2]+3-x0)/step)+1,nz=Math.ceil((b[3]+3-z0)/step)+1;
+ const pts=[],c1=[],c2=[];for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const x=x0+i*step,z=z0+j*step;pts.push([x,z]);c1.push(U.rgb(U.shade(C,(U.noise2(x*.21,z*.21)-.5)*.16)));c2.push(U.rgb(U.shade(C,(U.noise2(x*.21+7,z*.21+3)-.5)*.16-.02)))}
+ return{pts,c1,c2,nx,nz,sx:new Float32Array(pts.length),sy:new Float32Array(pts.length)}}
 function polyArea(p){let a=0;for(let i=0,j=p.length-1;i<p.length;j=i++)a+=(p[j][0]+p[i][0])*(p[j][1]-p[i][1]);return a}
 function centroid(p){let x=0,z=0;for(const q of p){x+=q[0];z+=q[1]}return[x/p.length,z/p.length]}
 function densify(pts,step){const o=[];for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/step));for(let k=0;k<n;k++)o.push([U.lerp(a[0],b[0],k/n),U.lerp(a[1],b[1],k/n)])}o.push(pts[pts.length-1]);return o}
@@ -1949,7 +2017,9 @@ function drawEmote(ctx,a,x,y,s,t){const e=a.emote;const k=Math.min(1,e.t/.25),po
 function wrap(ctx,txt,maxW){const out=[];let line='';for(const ch of [...txt]){const tt=line+ch;if(ctx.measureText(tt).width>maxW&&line){out.push(line);line=ch}else line=tt}if(line)out.push(line);return out.slice(0,3)}
 function drawBubble(ctx,b,x,y,t){const k=Math.min(1,b.t/.22),e=U.ease.back(k),fade=b.life-b.t<.35?Math.max(0,(b.life-b.t)/.35):1;if(fade<=0)return;
  ctx.font='600 13px "Nunito","Noto Sans TC",sans-serif';const lines=b._l||(b._l=wrap(ctx,b.text,170));const w=Math.min(190,Math.max(...lines.map(l=>ctx.measureText(l).width))+24),h=lines.length*18+14;
- const bx=U.clamp(x-w/2,8,R.W-w-8),by=y-h-12;ctx.save();ctx.globalAlpha=fade;ctx.translate(x,y);ctx.scale(.7+.3*e,.7+.3*e);ctx.translate(-x,-y);
+ let bx=U.clamp(x-w/2,8,R.W-w-8);const by=y-h-12;
+ /* 避開右側 HUD 按鈕列（UI 每秒量一次位置，存在 R.safe） */
+ const S=R.safe;if(S&&by<S.b&&by+h>S.t&&bx+w>S.l-6)bx=Math.max(8,S.l-w-6);ctx.save();ctx.globalAlpha=fade;ctx.translate(x,y);ctx.scale(.7+.3*e,.7+.3*e);ctx.translate(-x,-y);
  ctx.shadowColor='rgba(70,50,40,.18)';ctx.shadowBlur=8;ctx.shadowOffsetY=2;rrect(ctx,bx,by,w,h,13);ctx.fillStyle=b.tone==='angry'?'#FFF1EC':b.tone==='sad'?'#EEF3FB':'#FFFCF4';ctx.fill();ctx.shadowColor='transparent';
  ctx.beginPath();const tx=U.clamp(x,bx+16,bx+w-16);ctx.moveTo(tx-7,by+h-1);ctx.lineTo(tx,by+h+8);ctx.lineTo(tx+6,by+h-1);ctx.fill();
  if(b.who){ctx.fillStyle='#B08F7E';ctx.font='700 9px "Nunito","Noto Sans TC",sans-serif';}
@@ -2054,7 +2124,8 @@ const Rig={RS,
    case'dizzy':hyT=4+Math.sin(A.t*3)*2;htT=Math.sin(A.t*4.2)*12;hxT=Math.sin(A.t*2.1)*6;tailAmp=8;tailSpd=1.4;tailBase=-12;break}
   if(a.sick){tailBase-=10;tailAmp*=.5;hyT+=3}
   if(a.mood==='happy'||a.mood==='excited'||a.mood==='loved'){tailAmp*=1.25;tailSpd*=1.25}
-  U.spring(A.hy,hyT,dt,140,.55);U.spring(A.hx,hxT,dt,90,.7);U.spring(A.ht,htT,dt,110,.6);U.spring(A.lean,leanT,dt,80,.75);
+  const det=OC.R.perf?OC.R.perf.animDetail:1;if(det===0){/* 簡化：頭與尾巴直接到位，不做次級彈簧 */A.hy.x=hyT;A.hx.x=hxT;A.ht.x=htT;A.lean.x=leanT;tailAmp*=.5}else{U.spring(A.hy,hyT,dt,140,.55);U.spring(A.hx,hxT,dt,90,.7);U.spring(A.ht,htT,dt,110,.6);U.spring(A.lean,leanT,dt,80,.75)}
+  if(det===2&&!a.task&&!a.goal&&Math.random()<dt*.05)A.lookT=0;
   A.tailPh=(A.tailPh||0)+dt*tailSpd*2;U.spring(A.tl,tailBase+Math.sin(A.tailPh)*tailAmp,dt,90,.5);
   /* 說話嘴型 */
   if(a.bubble&&a.bubble.t<a.bubble.text.length/28)A.talkT+=dt;else A.talkT=0;
@@ -2116,7 +2187,7 @@ const Rig={RS,
    let x,y;if(part==='all'){x=(w.x||0)*k;y=oy+imgH*(anchor==='body'?.62:anchor==='face'?.3:.06)+(w.y||0)*k}else{x=(base[0]-CX+(w.x||0))*k;y=(base[1]-FOOT_Y+(w.y||0))*k}
    const sz=150*(w.s||.6)*k;const hgt=sz*im.height/im.width;ctx.save();ctx.translate(x,y);ctx.rotate((w.r||0)*Math.PI/180);ctx.drawImage(im,-sz/2,-hgt/2,sz,hgt);ctx.restore()}},
  /* 角色頭像（UI 用）：直接用 SVG，不需動畫 */
- avatarHTML(c){if(c.kind==='image')return`<img class="av-img" data-img="${U.esc(c.img)}" alt="">`;return OC.ocSVG({look:c.look})},
+ avatarHTML(c){if(c.kind==='image'){const u=OC.Store.Assets.peek(c.img);return u?`<img class="av-img" src="${u}" alt="">`:`<img class="av-img" data-img="${U.esc(c.img)}" alt="">`}return OC.ocSVG({look:c.look})},
  async fillImgs(root){for(const n of root.querySelectorAll('img[data-img]')){if(n.src)continue;const u=await OC.Store.Assets.get(n.dataset.img);if(u)n.src=u}}};
 function raster0(url){return new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>res(null);i.src=url})}
 OC.Rig=Rig;
@@ -2208,7 +2279,8 @@ const Sim={agents:new Map(),acc:0,t:0,
  active(){return this.agents.get(OC.S.activeId)||this.agents.values().next().value||null},
 
  /* ================= 每格 ================= */
- tick(dt){this.t+=dt;for(const a of this.agents.values()){a.update(dt);this.move(a,dt);this.runTask(a,dt)}
+ tick(dt){this.t+=dt;const bg=OC.Store.perf().bgTick;const iv=bg>=1?0:.06/bg;
+  for(const a of this.agents.values()){let d=dt;if(iv&&!this.visible(a)){a._bg=(a._bg||0)+dt;if(a._bg<iv)continue;d=a._bg;a._bg=0}a.update(d);this.move(a,d);this.runTask(a,d)}
   this.acc+=dt;if(this.acc>=.25){const step=this.acc;this.acc=0;this.slow(step)}},
  /* 4Hz：需求、情緒、決策、社交 */
  slow(dt){const H=dt/3600;for(const a of this.agents.values()){const c=a.c;this.decay(c,H,a);this.health(a,dt);this.moodOf(c);
@@ -2929,7 +3001,8 @@ const UI={ic,COIN,sheets:[],blockWorld:false,placing:null,
   this.buildHUD();OC.Bag&&OC.Bag.initTray();
   U.on('coins',()=>this.hudStats());U.on('xp',()=>this.hudStats());U.on('pending',()=>this.hudBell());U.on('log',()=>this.hudBell());U.on('quests',()=>this.hudQuest());U.on('scene',()=>{this.hudLoc();this.closeFloating()});U.on('weather',()=>this.hudTime(true));
   U.on('mood',c=>{if(c.id===OC.S.activeId)this.hudChar()});U.on('chars',()=>this.hudChar());
-  setInterval(()=>{if(!document.hidden){this.hudTime();this.hudChar()}},1000);
+  const safe=()=>{const r=document.querySelector('.hud-rail');const b=r&&r.getBoundingClientRect();OC.R.safe=b&&b.width?{l:b.left,t:b.top,b:b.bottom}:null};safe();
+  setInterval(()=>{if(!document.hidden){this.hudTime();this.hudChar();safe()}},1000);
   this.hudStats();this.hudTime(true);this.hudChar();this.hudLoc();this.hudBell();this.hudQuest();
   document.addEventListener('keydown',e=>{if(e.key==='Escape')this.back()});
   /* 點畫面上任何非浮動選單的地方，就收起輪盤與快捷背包 */
@@ -3030,6 +3103,8 @@ const UI={ic,COIN,sheets:[],blockWorld:false,placing:null,
   const head=title?`<header class="sh-h">${icon?`<span class="sh-i">${ic(icon,28)}</span>`:''}<h2>${esc(title)}</h2></header>`:'';
   const sh=U.el(`<section class="sheet ${cls} ${full?'full':''}" role="dialog"><div class="grab"></div><button class="sh-x" aria-label="關閉">${ic('close',18)}</button>${head}<div class="sh-b">${html}</div></section>`);
   L.append(scrim,sh);const api={el:sh,body:$('.sh-b',sh),closed:false,close:()=>{if(api.closed)return;api.closed=true;sh.classList.remove('open');scrim.classList.remove('open');sh.classList.add('closing');this.sheets=this.sheets.filter(x=>x!==api);setTimeout(()=>{sh.remove();scrim.remove()},300);onClose&&onClose();this.syncBlock()}};
+  /* 就地更新內容（保留捲動位置，不關閉重開，避免閃爍） */
+  api.update=h=>{const y=api.body.scrollTop;api.body.innerHTML=h;api.body.scrollTop=y;OC.Rig.fillImgs(api.body)};
   scrim.addEventListener('click',api.close);$('.sh-x',sh).onclick=api.close;this.sheets.push(api);this.syncBlock();this.closeFloating();
   /* 下滑關閉 */
   let y0=null,dy=0,can=false;sh.addEventListener('pointerdown',e=>{if(e.target.closest('input,textarea,canvas,.nodrag,[type=range]'))return;can=api.body.scrollTop<=0||!!e.target.closest('.grab,.sh-h');y0=e.clientY;dy=0},{passive:true});
@@ -3129,7 +3204,7 @@ const Bag={trayOpen:false,target:null,
    <div class="it-act">${usable?`<button class="btn primary" data-a="use">${Icons.svg('gift',20)}給夥伴</button>`:''}${place?`<button class="btn primary" data-a="place">${Icons.svg('hammer',20)}擺放</button>`:''}
     <button class="btn" data-a="pin">${Icons.svg('star',20)}${pins.includes(id)?'移出常用':'加入常用'}</button>${it.sell?`<button class="btn ghost" data-a="sell">${Icons.svg('coin',18)}賣出 ${it.sell}</button>`:''}</div>`,{cls:'it-s'});OC.Rig.fillImgs(s.el);
   s.el.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
-   if(a==='pin'){const i=pins.indexOf(id);if(i>=0)pins.splice(i,1);else pins.push(id);OC.Store.save();s.close();this.detail(id)}
+   if(a==='pin'){const i=pins.indexOf(id);if(i>=0)pins.splice(i,1);else pins.push(id);OC.Store.save();b.innerHTML=`${OC.Icons.svg('star',20)}${pins.includes(id)?'移出常用':'加入常用'}`;if(OC.Pages.cur==='bag')OC.Pages.render()}
    else if(a==='sell'){if(OC.Shop.sell(id)){OC.UI.toast(`賣出 +${it.sell} 星幣`,'coin');s.close();if(Items.qty(id))this.detail(id);OC.Pages.render()}}
    else if(a==='place'){s.close();OC.Pages.close();OC.Deco.placeItem(id)}
    else if(a==='use'){s.close();this.chooseChar(ch=>{OC.Pages.close();setTimeout(()=>{const ag=OC.Sim.get(ch.id);if(!ag)return;if(ag.loc!==OC.R.sc.id)OC.World.go(ag.loc,{focus:ag});setTimeout(()=>OC.Play.give(ag,id),ag.loc!==OC.R.sc.id?700:200)},250)})}})},
@@ -3213,7 +3288,7 @@ const Pages={cur:null,CAT_IC,
    <h3 class="sec">共同回憶</h3>${r.mem.length?r.mem.slice(0,8).map(m=>`<p class="log">${ic(m.val>0?'flower':'rain',18)}<span>${esc(m.text)}</span></p>`).join(''):'<p class="empty">還沒有共同回憶</p>'}
    <h3 class="sec">關係設定</h3><div class="chips">${[['','自然發展'],['family','家人'],['rival','競爭對手']].map(([k,t])=>`<button class="chip ${(r.tag||'')===k?'on':''}" data-tag="${k}">${t}</button>`).join('')}<button class="chip ${r.noRomance?'':'on'}" data-rom>${r.noRomance?'不允許戀愛':'允許戀愛發展'}</button></div>
    ${r.broken||r.conf>30?`<button class="btn primary wide" data-med>介入調解</button>`:''}${r.lovers?`<button class="btn ghost wide" data-unlove>結束戀人關係</button>`:''}`,{});OC.Rig.fillImgs(s2.el);
-  s2.el.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;if(t.dataset.tag!=null){r.tag=t.dataset.tag||null}else if(t.hasAttribute('data-rom'))r.noRomance=!r.noRomance;else if(t.hasAttribute('data-med')){const res=OC.Social.mediate(a,b);UI.toast(res.ok?'調解成功！':'還需要一點時間…',res.ok?'heart':'info')}else if(t.hasAttribute('data-unlove')){r.lovers=false;Sim.log(null,`${A.name}和${B.name}決定回到朋友關係。`,'cloud')}else return;OC.Store.save();s2.close();this.relSheet(a,b);if(this.cur==='chars')this.render()})},
+  s2.el.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;if(t.dataset.tag!=null){r.tag=t.dataset.tag||null}else if(t.hasAttribute('data-rom'))r.noRomance=!r.noRomance;else if(t.hasAttribute('data-med')){const res=OC.Social.mediate(a,b);UI.toast(res.ok?'調解成功！':'還需要一點時間…',res.ok?'heart':'info')}else if(t.hasAttribute('data-unlove')){r.lovers=false;Sim.log(null,`${A.name}和${B.name}決定回到朋友關係。`,'cloud')}else return;OC.Store.save();s2.close();setTimeout(()=>this.relSheet(a,b),10);if(this.cur==='chars')this.render()})},
  /* 角色檔案（查看用） */
  profile(id){const c=OC.S.chars.find(x=>x.id===id);if(!c)return;const tp=Chars.typeName(c);const P=c.profile;
   const field=(k,v)=>v?`<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`:'';
@@ -3268,40 +3343,50 @@ const Pages={cur:null,CAT_IC,
   else if(t==='story'){b=OC.S.log.slice(0,80).map(l=>`<p class="log">${ic('sprout',18)}<span>${esc(l.text)}<small>${UI.ago(l.t)}</small></span></p>`).join('')||'<p class="empty">故事才剛開始</p>'}
   else if(t==='home')b=OC.Deco.panel();
   return`<header class="ph"><span class="ph-i">${ic('quest',40)}</span><div><h1>小島日常</h1><p>${ic('coin',16)} ${OC.S.coins.toLocaleString()}　${ic('gem',16)} ${OC.S.gems||0}</p></div></header><div class="tabs">${tabs.map(([k,n])=>`<button data-ltab="${k}" class="${t===k?'on':''}">${n}</button>`).join('')}</div><div class="lb">${b}</div>`},
- timeWeather(){const W=Env.WX;const off=OC.S.world.timeOffset||0;const s=UI.sheet(`<p class="lead">${Env.label().date} ${Env.label().time}</p>
-  <h3 class="sec">時間</h3><div class="chips">${[['real','現在（實際時間）',0],['m','清晨 6:30',6.5],['d','中午 12:00',12],['e','黃昏 18:00',18],['n','夜晚 21:00',21]].map(([k,t,h])=>`<button class="chip" data-h="${h}">${t}</button>`).join('')}</div>
-  <h3 class="sec">天氣</h3><div class="chips"><button class="chip ${!OC.S.world.weather?'on':''}" data-w="">自動</button>${Object.entries(W).map(([k,v])=>`<button class="chip ${OC.S.world.weather===k?'on':''}" data-w="${k}">${ic(v.ic,18)} ${v.t}</button>`).join('')}</div><p class="hint">調整後畫面會平順過渡，夥伴的作息也會跟著改變。</p>`,{title:'時間與天氣',icon:Env.WX[Env.wid].ic});
-  s.el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.h!=null){const h=+b.dataset.h;if(!h)OC.S.world.timeOffset=0;else{const d=new Date();const cur=d.getHours()+d.getMinutes()/60;OC.S.world.timeOffset=Math.round((h-cur)*3600e3)}}
-   else if(b.dataset.w!=null){OC.S.world.weather=b.dataset.w||null}else return;Env._k=-1;Env.update();OC.R.skey='';UI.hudTime(true);OC.Store.save();s.close();this.timeWeather()})},
- /* ================= 設定 ================= */
- settings(){const st=OC.S.settings,cu=st.custom;const modes=[['quality','高畫質','完整光影、粒子、環境動態'],['balanced','平衡','一般手機推薦'],['battery','省電','30 FPS、降低特效與解析度'],['custom','自訂','自己調整每一項']];
-  const sw=(k,t,d)=>`<label class="sw"><span><b>${t}</b><small>${d||''}</small></span><input type="checkbox" data-s="${k}" ${st[k]!==false?'checked':''}><i></i></label>`;
-  const s=UI.sheet(`
-   <h3 class="sec">畫質與效能</h3><div class="modes">${modes.map(([k,t,d])=>`<button class="mode ${st.perf===k?'on':''}" data-perf="${k}"><b>${t}</b><small>${d}</small></button>`).join('')}</div>
-   <div class="custom" ${st.perf==='custom'?'':'hidden'}>
-    ${[['fps','FPS 上限',[[30,'30'],[60,'60']]],['scale','渲染解析度',[[1,'低'],[1.5,'中'],[2,'高'],[3,'最高']]],['shadows','地面細節',[[0,'關'],[1,'開'],[2,'高']]],['particles','粒子數量',[[0,'無'],[.3,'少'],[.6,'中'],[1,'多']]],['ambient','環境動畫',[[0,'關'],[1,'開'],[2,'豐富']]],['cloudShadow','雲影',[[0,'關'],[1,'開']]],['maxChars','同時顯示角色',[[4,'4'],[6,'6'],[10,'10'],[16,'16']]]].map(([k,t,o])=>`<div class="opt"><span>${t}</span><div class="seg">${o.map(([v,n])=>`<button data-c="${k}" data-v="${v}" class="${cu[k]==v?'on':''}">${n}</button>`).join('')}</div></div>`).join('')}</div>
+ /* ================= 時間與天氣（就地更新，不關閉重開，避免閃爍） ================= */
+ timeWeather(){const W=Env.WX;const body=()=>{const off=OC.S.world.timeOffset||0,L=Env.label();return`<p class="lead">${L.date}　<b>${L.time}</b>　${L.wx.t}</p>
+  <h3 class="sec">時間</h3><div class="chips">${[['現在（實際時間）',0],['清晨 6:30',6.5],['中午 12:00',12],['黃昏 18:00',18],['夜晚 21:00',21]].map(([t,h])=>`<button class="chip ${(!h&&!off)||(h&&Math.abs(Env.h-h)<.05)?'on':''}" data-h="${h}">${t}</button>`).join('')}</div>
+  <h3 class="sec">天氣</h3><div class="chips"><button class="chip ${!OC.S.world.weather?'on':''}" data-w="">自動</button>${Object.entries(W).map(([k,v])=>`<button class="chip ${OC.S.world.weather===k?'on':''}" data-w="${k}">${ic(v.ic,18)} ${v.t}</button>`).join('')}</div><p class="hint">調整後畫面會平順過渡，夥伴的作息也會跟著改變。</p>`};
+  const s=UI.sheet(body(),{title:'時間與天氣',icon:Env.WX[Env.wid].ic});
+  s.el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.classList.contains('sh-x'))return;if(b.dataset.h!=null){const h=+b.dataset.h;if(!h)OC.S.world.timeOffset=0;else{const d=new Date();const cur=d.getHours()+d.getMinutes()/60;OC.S.world.timeOffset=Math.round((h-cur)*3600e3)}}
+   else if(b.dataset.w!=null){OC.S.world.weather=b.dataset.w||null}else return;Env._k=-1;Env.update();UI.hudTime(true);OC.Store.save();s.update(body())})},
+ /* ================= 設定（所有選項立即生效、就地更新） ================= */
+ settings(){const st=OC.S.settings;const modes=[['quality','高畫質','完整光影、粒子、環境動態'],['battery','省電','30 FPS、降低特效與解析度'],['balanced','平衡','一般手機推薦'],['custom','自訂','自己調整每一項']];
+  const OPTS=[['fps','FPS 上限',[[30,'30'],[60,'60']]],['scale','渲染解析度',[[1,'低'],[1.5,'中'],[2,'高'],[3,'最高']]],['shadows','地面細節與陰影',[[0,'關'],[1,'開'],[2,'高']]],['particles','粒子特效',[[0,'無'],[.3,'少'],[.6,'中'],[1,'多']]],['weather','天氣效果',[[0,'關'],[1,'開']]],['ambient','環境動畫',[[0,'關'],[1,'開'],[2,'豐富']]],['cloudShadow','雲影',[[0,'關'],[1,'開']]],['animDetail','角色動畫細節',[[0,'簡化'],[1,'標準'],[2,'精緻']]],['maxChars','同時顯示角色',[[4,'4'],[6,'6'],[10,'10'],[16,'16']]],['bgTick','畫面外角色更新',[[.25,'省電'],[.5,'一般'],[1,'即時']]]];
+  const body=()=>{const cu=st.custom,sw=(k,t,d)=>`<label class="sw"><span><b>${t}</b><small>${d||''}</small></span><input type="checkbox" data-s="${k}" ${st[k]!==false?'checked':''}><i></i></label>`;return`
+   <h3 class="sec">畫質與效能</h3><div class="modes">${[modes[0],modes[2],modes[1],modes[3]].map(([k,t,d])=>`<button class="mode ${st.perf===k?'on':''}" data-perf="${k}"><b>${t}</b><small>${d}</small></button>`).join('')}</div>
+   <div class="custom" ${st.perf==='custom'?'':'hidden'}>${OPTS.map(([k,t,o])=>`<div class="opt"><span>${t}</span><div class="seg">${o.map(([v,n])=>`<button data-c="${k}" data-v="${v}" class="${cu[k]==v?'on':''}">${n}</button>`).join('')}</div></div>`).join('')}</div>
+   <p class="hint">目前 ${OC.Loop.fps} FPS・解析度 ×${OC.R.dpr.toFixed(2)}</p>
    <div class="opt"><span>減少動態效果</span><div class="seg">${[['system','跟隨系統'],['full','完整'],['reduce','減少']].map(([v,n])=>`<button data-motion="${v}" class="${st.motion===v?'on':''}">${n}</button>`).join('')}</div></div>
    <div class="opt"><span>外觀主題</span><div class="seg">${[['system','跟隨系統'],['light','淺色'],['dark','深色']].map(([v,n])=>`<button data-theme="${v}" class="${st.theme===v?'on':''}">${n}</button>`).join('')}</div></div>
    <h3 class="sec">生活模擬</h3>${sw('autoSocial','夥伴自主社交','自己聊天、玩耍、拜訪')}${sw('negEvents','負面經歷','吵架、生病、心情低落等（重大變化仍會詢問你）')}${sw('romance','戀愛發展','成為戀人前一定會先問你')}
    <h3 class="sec">畫面</h3>${sw('bubbles','對話泡泡')}${sw('names','名字標籤')}${sw('haptics','觸覺回饋')}
    <div class="opt"><span>互動演出</span><div class="seg">${[['full','電影式'],['short','簡短']].map(([v,n])=>`<button data-cine="${v}" class="${(st.cine||'full')===v?'on':''}">${n}</button>`).join('')}</div></div>
    <h3 class="sec">Android 桌寵</h3><button class="btn wide" data-petset>${ic('paw',20)}桌寵設定</button>
-   <h3 class="sec">資料</h3><div class="col"><button class="btn" data-exp>匯出完整備份（含圖片）</button><button class="btn" data-imp>匯入備份</button>${OC.Store.hasLegacy()?'<button class="btn" data-legacy>重新從 3.2 舊版匯入夥伴</button>':''}<button class="btn" data-intro>重看開場動畫</button><button class="btn" data-tut>重看新手引導</button><button class="btn ghost danger-t" data-reset>重新開始遊戲</button></div>
-   <p class="hint ver">OC Shimeji v4.1 · FPS ${OC.Loop.fps}</p>`,{full:true,title:'設定',icon:'gear'});
-  s.el.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;const re=()=>{s.close();this.settings()};
-   if(b.dataset.perf){st.perf=b.dataset.perf;OC.R.resize();OC.R.skey='';OC.Store.save();re()}
-   else if(b.dataset.c){cu[b.dataset.c]=+b.dataset.v;OC.R.resize();OC.R.skey='';OC.Store.save();re()}
+   <h3 class="sec">資料與備份</h3><div class="col"><button class="btn" data-exp>${ic('export',18)}匯出完整備份（含所有圖片與動畫）</button><button class="btn" data-imp>${ic('import',18)}匯入完整備份</button><button class="btn" data-snaps>${ic('book',18)}每日自動快照與還原</button><button class="btn ghost" data-gc>清理沒有使用的素材</button>${OC.Store.hasLegacy()?'<button class="btn ghost" data-legacy>重新從 3.2 舊版匯入夥伴</button>':''}</div>
+   <h3 class="sec">其他</h3><div class="col"><button class="btn" data-intro>重看開場動畫</button><button class="btn" data-tut>重看新手引導</button><button class="btn ghost danger-t" data-reset>重新開始遊戲</button></div>
+   <p class="hint ver">OC Shimeji v4.2・存檔版本 ${OC.Store.VER}</p>`};
+  const s=UI.sheet(body(),{full:true,title:'設定',icon:'gear'});const re=()=>s.update(body());
+  s.el.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.classList.contains('sh-x'))return;
+   if(b.dataset.perf){st.perf=b.dataset.perf;OC.R.resize();OC.Store.save();re()}
+   else if(b.dataset.c){st.custom[b.dataset.c]=+b.dataset.v;OC.R.resize();OC.Store.save();re()}
    else if(b.dataset.motion){st.motion=b.dataset.motion;applyTheme();OC.Store.save();re()}
    else if(b.dataset.theme){st.theme=b.dataset.theme;applyTheme();OC.Store.save();re()}
-   else if(b.hasAttribute('data-exp')){this.download(await OC.Store.exportAll(),`oc-shimeji-backup-${U.dayKey()}.json`)}
-   else if(b.hasAttribute('data-imp')){const t=await this.pickFile('.json,application/json');if(t)try{await OC.Store.importAll(t)}catch(err){UI.toast(err.message,'warn')}}
+   else if(b.dataset.cine){st.cine=b.dataset.cine;OC.Store.save();re()}
+   else if(b.hasAttribute('data-exp')){U.buzz(8);this.download(await OC.Store.exportAll(),`oc-shimeji-backup-${U.dayKey()}.json`)}
+   else if(b.hasAttribute('data-imp')){const t=await this.pickFile('.json,application/json');if(t)try{if(await UI.confirm({title:'還原這份備份？',msg:'目前的進度會先存成快照，之後可以在「每日自動快照」找回。',ok:'還原'}))await OC.Store.importAll(t)}catch(err){UI.toast(err.message,'warn')}}
+   else if(b.hasAttribute('data-snaps')){this.snapSheet()}
+   else if(b.hasAttribute('data-gc')){const n=await OC.Store.gc();UI.toast(n?`清理了 ${n} 個沒有使用的素材`:'沒有需要清理的素材','check')}
    else if(b.hasAttribute('data-legacy')){const n=await OC.Store.importLegacy();Sim.sync();UI.toast(`匯入了 ${n} 位夥伴（已存在的不重複）`,'check')}
    else if(b.hasAttribute('data-intro')){s.close();OC.Intro.replay()}
    else if(b.hasAttribute('data-tut')){s.close();OC.Tutorial.start()}
    else if(b.hasAttribute('data-petset')){s.close();OC.PetUI.open()}
-   else if(b.dataset.cine){st.cine=b.dataset.cine;OC.Store.save();re()}
-   else if(b.hasAttribute('data-reset')){if(await UI.confirm({title:'重新開始？',msg:'目前的島嶼、夥伴與進度都會清除。建議先匯出備份。',ok:'清除並重新開始',danger:true}))OC.Store.reset()}});
+   else if(b.hasAttribute('data-reset')){if(await UI.confirm({title:'重新開始？',msg:'目前的島嶼、夥伴與進度都會清除（每日快照仍會保留）。建議先匯出備份。',ok:'清除並重新開始',danger:true})){await OC.Store.snapshot('before-reset');OC.Store.reset()}}});
   s.el.addEventListener('change',e=>{const k=e.target.dataset.s;if(!k)return;st[k]=e.target.checked;OC.Store.save()})},
+ /* 每日快照清單 */
+ async snapSheet(){const L=await OC.Store.snapshots();const T={auto:'每日自動','before-import':'匯入前','before-restore':'還原前','before-reset':'重新開始前'};
+  const s=UI.sheet(L.length?L.map(x=>`<div class="qrow"><span class="q-i">${ic('book',26)}</span><div><b>${new Date(x.at).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</b><small>${T[x.tag]||x.tag}・${x.chars} 位夥伴</small></div><button class="btn sm" data-snap="${esc(x.k)}">還原</button></div>`).join('')+'<p class="hint">每天自動保留一份，最多 7 份。還原前會先把目前進度存成快照。</p>':'<p class="empty">還沒有快照（遊戲開啟後會自動建立）</p>',{title:'每日快照',icon:'book'});
+  s.el.addEventListener('click',async e=>{const b=e.target.closest('[data-snap]');if(!b)return;if(await UI.confirm({title:'還原這份快照？',msg:'遊戲會重新載入。',ok:'還原'}))try{await OC.Store.restoreSnapshot(b.dataset.snap)}catch(err){UI.toast(err.message,'warn')}})},
  download(text,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);if(OC.Native.has())OC.Native.saveFile(name,text);UI.toast('已匯出','check')},
  pickFile(accept,asData){return new Promise(res=>{const i=$('#fileIn');i.accept=accept;i.value='';i.onchange=()=>{const f=i.files[0];if(!f){res(null);return}const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>res(null);asData?r.readAsDataURL(f):r.readAsText(f)};i.click()})},
  /* ================= 事件綁定 ================= */
@@ -3808,11 +3893,8 @@ const Intro={
       a.say(OC.Chars.line(c,'greet')||(OC.Chars.has(c,'shy')?'那、那個…你好…':OC.Chars.has(c,'tsun')?'哼，這裡還不錯嘛。':OC.Chars.has(c,'sleepy')?'呼啊…這就是新家嗎…':`嗨！我是${c.name}，請多指教！`),{life:3.4});a.task=null;
       OC.Sim.remember(c,'arrive','來到這座小島',.8,ids.filter(x=>x!==id),'home')},1500)},1200)},600+i*1300)});
   setTimeout(()=>{const a=Sim.get(ids[0]);OC.Cam.focus=a;OC.Cam.follow=true;UI.followChanged();if(first&&!OC.S.flags.tutorialDone)OC.Tutorial.start()},1800+ids.length*1300)},
- /* 屋內家具移動 */
- moveFurn(fid){const F=(OC.S.world.houseFurn||[]).find(f=>f.id===fid);if(!F)return;const cam=OC.R.cam;const el=this.el();el.hidden=false;el.className='intro place';el.innerHTML=`<div class="pl-tip"><b>拖曳家具到新位置</b></div><div class="pl-bar"><button class="btn ghost" data-store>收進背包</button><button class="btn primary" data-ok>完成</button></div>`;
-  let drag=null;OC.UI.placing={down:p=>{drag={w0:cam.unproject(p.x,p.y),x:F.x,z:F.z}},move:p=>{if(!drag)return;const w=cam.unproject(p.x,p.y);F.x=U.clamp(drag.x+w.x-drag.w0.x,-3.4,3.4);F.z=U.clamp(drag.z+w.z-drag.w0.z,-2.3,2.2);OC.Scenes.syncFurn();OC.R.invalidate()},up:()=>{drag=null},cancel:()=>{}};
-  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-store')){const it=C.ITEMS.find(i=>i.furn===F.k);OC.S.world.houseFurn=OC.S.world.houseFurn.filter(f=>f!==F);if(it)OC.Items.add(it.id,1);OC.Scenes.syncFurn();OC.R.invalidate()}
-   OC.UI.placing=null;OC.Store.flush();el.className='intro';el.hidden=true;el.innerHTML=''}}};
+ /* 屋內家具移動：交給佈置模組（保留舊入口相容） */
+ moveFurn(fid){OC.Deco.move('furn',fid)}};
 
 /* ================= 互動式新手引導（融入遊戲，不一次塞滿說明） ================= */
 const STEPS=[
@@ -3824,7 +3906,7 @@ const STEPS=[
  {t:'你的房子',d:'點房子可以進屋。夥伴會在裡面睡覺、做飯、看書。',ev:'house',at:null,next:1},
  {t:'到處去看看',d:'點右側的地圖按鈕，可以去廣場、海灘和森林。夥伴們也會自己出門喔！',ev:'map',at:'.hud-rail [data-r=map]',next:1}];
 const Tutorial={i:-1,start(){this.i=-1;this.off&&this.off();this.off=U.on('tut',k=>{const s=STEPS[this.i];if(s&&s.ev===k)setTimeout(()=>this.next(),600)});this.next()},
- next(){this.i++;const host=$('#coach');if(this.i>=STEPS.length){host.className='coach';host.innerHTML='';OC.S.flags.tutorialDone=true;OC.Items.coins(100);UI.celebrate(OC.Sim.active()?.c,'新手引導完成！+100 星幣','歡迎來到小島');OC.Store.save();this.off&&this.off();return}
+ next(){this.i++;const host=$('#coach');if(this.i>=STEPS.length){clearInterval(this.rt);host.className='coach';host.innerHTML='';OC.S.flags.tutorialDone=true;OC.Items.coins(100);UI.celebrate(OC.Sim.active()?.c,'新手引導完成！+100 星幣','歡迎來到小島');OC.Store.save();this.off&&this.off();return}
   const s=STEPS[this.i];host.innerHTML=`<div class="co-c"><small>${this.i+1} / ${STEPS.length}</small><b>${esc(s.t)}</b><p>${esc(s.d)}</p><div class="row end">${s.next?'<button class="btn primary" data-n>下一步</button>':''}<button class="link" data-x>跳過引導</button></div></div><i class="co-ring" hidden></i>`;host.className='coach on';
   host.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-n'))this.next();else{this.i=STEPS.length-1;this.next()}};
   this.ring(s.at)},
@@ -3908,16 +3990,19 @@ const World={go(id,{instant,focus}={}){const C=OC.Content;if(!C.LOC[id])return;O
   if(instant||!OC.UI){doIt();return}OC.UI.fade(doIt)}};
 
 /* ---------- 前景／背景：背景時停止繪製、只在回來時補算 ---------- */
-document.addEventListener('visibilitychange',()=>{if(document.hidden){OC.Store.flush();Loop.stop();Loop.hiddenAt=Date.now()}else{const away=(Date.now()-(Loop.hiddenAt||Date.now()))/1000;if(away>60){const r=Sim.offline(away);if(r&&r.lines.length&&OC.UI)OC.UI.welcomeBack(r)}Loop.start();OC.Native&&OC.Native.pullPetEvents&&OC.Native.pullPetEvents()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){OC.Store.flush();if(OC.S&&OC.S.flags.started)OC.Store.snapshot();Loop.stop();Loop.hiddenAt=Date.now()}else{const away=(Date.now()-(Loop.hiddenAt||Date.now()))/1000;if(away>60){const r=Sim.offline(away);if(r&&r.lines.length&&OC.UI)OC.UI.welcomeBack(r)}Loop.start();OC.Native&&OC.Native.pullPetEvents&&OC.Native.pullPetEvents()}});
 window.addEventListener('pagehide',()=>OC.Store.flush());
 window.addEventListener('resize',()=>{R.resize()});
 
 /* ---------- 啟動 ---------- */
-async function boot(){const S=OC.Store.load();OC.Pages.applyTheme();OC.Pages.init();
+async function boot(){let S=OC.Store.load();
+ /* 主存檔與備援都損毀 → 從每日快照復原 */
+ if(await OC.Store.recover())S=OC.S;OC.Pages.applyTheme();OC.Pages.init();
  /* 舊存檔處理：若沒有 v4 存檔但有 3.2 存檔 → 自動匯入（不覆蓋、不刪除舊資料） */
  let migrated=0;if(OC.Store.isNew()&&OC.Store.hasLegacy()){try{migrated=await OC.Store.importLegacy();S.flags.introSeen=true;S.flags.started=true;S.flags.tutorialDone=true}catch(e){console.error('legacy',e)}}
- for(const c of S.chars)OC.Chars.ensure(c);
- if(!S.activeId&&S.chars[0])S.activeId=S.chars[0].id;
+ const fixes=OC.Store.validate();
+ /* 素材預先載入記憶體：介面可同步顯示圖片，不會先空白再跳出來 */
+ await OC.Store.Assets.preload(OC.Store.refs());
  await OC.Creations.load();OC.Scenes.syncHouse();OC.Scenes.syncFurn();OC.Scenes.syncBuilds();
  Env.update();R.init(OC.U.$('#world'));Input.init(OC.U.$('#world'));
  const loc=S.flags.started?S.world.loc:'home';R.setScene(OC.Content.LOC[loc]?loc:'home');
@@ -3927,6 +4012,9 @@ async function boot(){const S=OC.Store.load();OC.Pages.applyTheme();OC.Pages.ini
   if(!S.flags.houseChosen)setTimeout(()=>OC.Intro.houseOnly(),1400)}
  else{OC.UI.init();OC.Intro.start()}
  Loop.start();OC.Native&&OC.Native.init&&OC.Native.init();
+ const info=OC.Store.loadInfo;if(info.src==='backup'||info.src==='snapshot')setTimeout(()=>OC.UI.toast(info.src==='backup'?'主存檔讀取失敗，已從備援存檔還原':'存檔損毀，已從最近的每日快照還原','warn'),1200);
+ else if(fixes.length)setTimeout(()=>OC.UI.toast(`已自動修復 ${fixes.length} 處存檔問題`,'info'),1200);
+ if(S.flags.started)OC.Store.flush();setTimeout(()=>OC.Store.snapshot(),5000);
  const sp=OC.U.$('#splash');if(sp){sp.classList.add('out');setTimeout(()=>sp.remove(),600)}}
 OC.Loop=Loop;OC.Cam=Cam;OC.Input=Input;OC.World=World;OC.boot=boot;
 })(window.OC);

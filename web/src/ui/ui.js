@@ -11,7 +11,8 @@ const UI={ic,COIN,sheets:[],blockWorld:false,placing:null,
   this.buildHUD();OC.Bag&&OC.Bag.initTray();
   U.on('coins',()=>this.hudStats());U.on('xp',()=>this.hudStats());U.on('pending',()=>this.hudBell());U.on('log',()=>this.hudBell());U.on('quests',()=>this.hudQuest());U.on('scene',()=>{this.hudLoc();this.closeFloating()});U.on('weather',()=>this.hudTime(true));
   U.on('mood',c=>{if(c.id===OC.S.activeId)this.hudChar()});U.on('chars',()=>this.hudChar());
-  setInterval(()=>{if(!document.hidden){this.hudTime();this.hudChar()}},1000);
+  const safe=()=>{const r=document.querySelector('.hud-rail');const b=r&&r.getBoundingClientRect();OC.R.safe=b&&b.width?{l:b.left,t:b.top,b:b.bottom}:null};safe();
+  setInterval(()=>{if(!document.hidden){this.hudTime();this.hudChar();safe()}},1000);
   this.hudStats();this.hudTime(true);this.hudChar();this.hudLoc();this.hudBell();this.hudQuest();
   document.addEventListener('keydown',e=>{if(e.key==='Escape')this.back()});
   /* 點畫面上任何非浮動選單的地方，就收起輪盤與快捷背包 */
@@ -112,6 +113,8 @@ const UI={ic,COIN,sheets:[],blockWorld:false,placing:null,
   const head=title?`<header class="sh-h">${icon?`<span class="sh-i">${ic(icon,28)}</span>`:''}<h2>${esc(title)}</h2></header>`:'';
   const sh=U.el(`<section class="sheet ${cls} ${full?'full':''}" role="dialog"><div class="grab"></div><button class="sh-x" aria-label="關閉">${ic('close',18)}</button>${head}<div class="sh-b">${html}</div></section>`);
   L.append(scrim,sh);const api={el:sh,body:$('.sh-b',sh),closed:false,close:()=>{if(api.closed)return;api.closed=true;sh.classList.remove('open');scrim.classList.remove('open');sh.classList.add('closing');this.sheets=this.sheets.filter(x=>x!==api);setTimeout(()=>{sh.remove();scrim.remove()},300);onClose&&onClose();this.syncBlock()}};
+  /* 就地更新內容（保留捲動位置，不關閉重開，避免閃爍） */
+  api.update=h=>{const y=api.body.scrollTop;api.body.innerHTML=h;api.body.scrollTop=y;OC.Rig.fillImgs(api.body)};
   scrim.addEventListener('click',api.close);$('.sh-x',sh).onclick=api.close;this.sheets.push(api);this.syncBlock();this.closeFloating();
   /* 下滑關閉 */
   let y0=null,dy=0,can=false;sh.addEventListener('pointerdown',e=>{if(e.target.closest('input,textarea,canvas,.nodrag,[type=range]'))return;can=api.body.scrollTop<=0||!!e.target.closest('.grab,.sh-h');y0=e.clientY;dy=0},{passive:true});

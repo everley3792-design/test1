@@ -76,11 +76,8 @@ const Intro={
       a.say(OC.Chars.line(c,'greet')||(OC.Chars.has(c,'shy')?'那、那個…你好…':OC.Chars.has(c,'tsun')?'哼，這裡還不錯嘛。':OC.Chars.has(c,'sleepy')?'呼啊…這就是新家嗎…':`嗨！我是${c.name}，請多指教！`),{life:3.4});a.task=null;
       OC.Sim.remember(c,'arrive','來到這座小島',.8,ids.filter(x=>x!==id),'home')},1500)},1200)},600+i*1300)});
   setTimeout(()=>{const a=Sim.get(ids[0]);OC.Cam.focus=a;OC.Cam.follow=true;UI.followChanged();if(first&&!OC.S.flags.tutorialDone)OC.Tutorial.start()},1800+ids.length*1300)},
- /* 屋內家具移動 */
- moveFurn(fid){const F=(OC.S.world.houseFurn||[]).find(f=>f.id===fid);if(!F)return;const cam=OC.R.cam;const el=this.el();el.hidden=false;el.className='intro place';el.innerHTML=`<div class="pl-tip"><b>拖曳家具到新位置</b></div><div class="pl-bar"><button class="btn ghost" data-store>收進背包</button><button class="btn primary" data-ok>完成</button></div>`;
-  let drag=null;OC.UI.placing={down:p=>{drag={w0:cam.unproject(p.x,p.y),x:F.x,z:F.z}},move:p=>{if(!drag)return;const w=cam.unproject(p.x,p.y);F.x=U.clamp(drag.x+w.x-drag.w0.x,-3.4,3.4);F.z=U.clamp(drag.z+w.z-drag.w0.z,-2.3,2.2);OC.Scenes.syncFurn();OC.R.invalidate()},up:()=>{drag=null},cancel:()=>{}};
-  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-store')){const it=C.ITEMS.find(i=>i.furn===F.k);OC.S.world.houseFurn=OC.S.world.houseFurn.filter(f=>f!==F);if(it)OC.Items.add(it.id,1);OC.Scenes.syncFurn();OC.R.invalidate()}
-   OC.UI.placing=null;OC.Store.flush();el.className='intro';el.hidden=true;el.innerHTML=''}}};
+ /* 屋內家具移動：交給佈置模組（保留舊入口相容） */
+ moveFurn(fid){OC.Deco.move('furn',fid)}};
 
 /* ================= 互動式新手引導（融入遊戲，不一次塞滿說明） ================= */
 const STEPS=[
@@ -92,7 +89,7 @@ const STEPS=[
  {t:'你的房子',d:'點房子可以進屋。夥伴會在裡面睡覺、做飯、看書。',ev:'house',at:null,next:1},
  {t:'到處去看看',d:'點右側的地圖按鈕，可以去廣場、海灘和森林。夥伴們也會自己出門喔！',ev:'map',at:'.hud-rail [data-r=map]',next:1}];
 const Tutorial={i:-1,start(){this.i=-1;this.off&&this.off();this.off=U.on('tut',k=>{const s=STEPS[this.i];if(s&&s.ev===k)setTimeout(()=>this.next(),600)});this.next()},
- next(){this.i++;const host=$('#coach');if(this.i>=STEPS.length){host.className='coach';host.innerHTML='';OC.S.flags.tutorialDone=true;OC.Items.coins(100);UI.celebrate(OC.Sim.active()?.c,'新手引導完成！+100 星幣','歡迎來到小島');OC.Store.save();this.off&&this.off();return}
+ next(){this.i++;const host=$('#coach');if(this.i>=STEPS.length){clearInterval(this.rt);host.className='coach';host.innerHTML='';OC.S.flags.tutorialDone=true;OC.Items.coins(100);UI.celebrate(OC.Sim.active()?.c,'新手引導完成！+100 星幣','歡迎來到小島');OC.Store.save();this.off&&this.off();return}
   const s=STEPS[this.i];host.innerHTML=`<div class="co-c"><small>${this.i+1} / ${STEPS.length}</small><b>${esc(s.t)}</b><p>${esc(s.d)}</p><div class="row end">${s.next?'<button class="btn primary" data-n>下一步</button>':''}<button class="link" data-x>跳過引導</button></div></div><i class="co-ring" hidden></i>`;host.className='coach on';
   host.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-n'))this.next();else{this.i=STEPS.length-1;this.next()}};
   this.ring(s.at)},

@@ -19,6 +19,8 @@ import androidx.webkit.WebViewAssetLoader
  */
 class MainActivity : AppCompatActivity() {
     lateinit var web: WebView
+    /** 目前載入的頁面是否為 App 內建內容；橋接的每個方法都會先檢查 */
+    @Volatile var trusted = false
     private lateinit var bridge: OCBridge
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -48,6 +50,10 @@ class MainActivity : AppCompatActivity() {
             // 只允許 App 內頁面，外部連結一律不在 WebView 內開啟
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                 request.url.host != "appassets.androidplatform.net"
+            override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
+                trusted = url != null && android.net.Uri.parse(url).let { it.scheme == "https" && it.host == "appassets.androidplatform.net" }
+                super.onPageStarted(view, url, favicon)
+            }
         }
         bridge = OCBridge(this)
         web.addJavascriptInterface(bridge, "OCNative")

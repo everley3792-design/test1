@@ -43,9 +43,10 @@ class PetService : Service() {
         private const val CH = "pets"
         private const val NID = 41
         const val ACT_TOGGLE = "toggle"; const val ACT_STOP = "stop"; const val ACT_RELOAD = "reload"; const val ACT_STATE = "state"; const val ACT_SUMMON = "summon"
-        fun start(ctx: Context) { val i = Intent(ctx, PetService::class.java).setAction(ACT_RELOAD); if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i) }
+        fun start(ctx: Context) { val i = Intent(ctx, PetService::class.java).setAction(ACT_RELOAD)
+            try { if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i) else ctx.startService(i) } catch (e: Exception) { e.printStackTrace() } }
         fun stop(ctx: Context) { ctx.stopService(Intent(ctx, PetService::class.java)) }
-        fun reload(ctx: Context, stateOnly: Boolean) { if (!running) return; ctx.startService(Intent(ctx, PetService::class.java).setAction(if (stateOnly) ACT_STATE else ACT_RELOAD)) }
+        fun reload(ctx: Context, stateOnly: Boolean) { if (!running) return; try { ctx.startService(Intent(ctx, PetService::class.java).setAction(if (stateOnly) ACT_STATE else ACT_RELOAD)) } catch (e: Exception) { e.printStackTrace() } }
     }
 
     private lateinit var wm: WindowManager
@@ -76,13 +77,19 @@ class PetService : Service() {
         super.onCreate(); running = true
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel(CH, getString(R.string.pet_channel), NotificationManager.IMPORTANCE_MIN))
-        ServiceCompat.startForeground(this, NID, notification(), if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0)
+        try {
+            ServiceCompat.startForeground(this, NID, notification(), if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0)
+        } catch (e: Exception) {
+            // ForegroundServiceStartNotAllowedException（從背景啟動）或 SecurityException：安全結束，下次開啟 App 時再啟動
+            e.printStackTrace(); running = false; stopSelf(); return
+        }
         val f = IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON) }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenRx, f, RECEIVER_NOT_EXPORTED) else @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(screenRx, f)
         measureScreen()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!running) return START_NOT_STICKY
         if (!Settings.canDrawOverlays(this)) { stopSelf(); return START_NOT_STICKY }
         when (intent?.action) {
             ACT_STOP -> { stopSelf(); return START_NOT_STICKY }
@@ -191,5 +198,5 @@ class PetService : Service() {
     }
     fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    override fun onDestroy() { running = false; handler.removeCallbacksAndMessages(null); closeMenu(); pets.forEach { it.remove() }; pets.clear(); try { unregisterReceiver(screenRx) } catch (_: Exception) {}; super.onDestroy() }
+    override fun onDestroy() { running = false; handler.removeCallbacksAndMessages(null); try { closeMenu() } catch (_: Exception) {}; pets.forEach { it.remove() }; pets.clear(); try { unregisterReceiver(screenRx) } catch (_: Exception) {}; super.onDestroy() }
 }

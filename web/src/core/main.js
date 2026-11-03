@@ -70,16 +70,19 @@ const World={go(id,{instant,focus}={}){const C=OC.Content;if(!C.LOC[id])return;O
   if(instant||!OC.UI){doIt();return}OC.UI.fade(doIt)}};
 
 /* ---------- 前景／背景：背景時停止繪製、只在回來時補算 ---------- */
-document.addEventListener('visibilitychange',()=>{if(document.hidden){OC.Store.flush();Loop.stop();Loop.hiddenAt=Date.now()}else{const away=(Date.now()-(Loop.hiddenAt||Date.now()))/1000;if(away>60){const r=Sim.offline(away);if(r&&r.lines.length&&OC.UI)OC.UI.welcomeBack(r)}Loop.start();OC.Native&&OC.Native.pullPetEvents&&OC.Native.pullPetEvents()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){OC.Store.flush();if(OC.S&&OC.S.flags.started)OC.Store.snapshot();Loop.stop();Loop.hiddenAt=Date.now()}else{const away=(Date.now()-(Loop.hiddenAt||Date.now()))/1000;if(away>60){const r=Sim.offline(away);if(r&&r.lines.length&&OC.UI)OC.UI.welcomeBack(r)}Loop.start();OC.Native&&OC.Native.pullPetEvents&&OC.Native.pullPetEvents()}});
 window.addEventListener('pagehide',()=>OC.Store.flush());
 window.addEventListener('resize',()=>{R.resize()});
 
 /* ---------- 啟動 ---------- */
-async function boot(){const S=OC.Store.load();OC.Pages.applyTheme();OC.Pages.init();
+async function boot(){let S=OC.Store.load();
+ /* 主存檔與備援都損毀 → 從每日快照復原 */
+ if(await OC.Store.recover())S=OC.S;OC.Pages.applyTheme();OC.Pages.init();
  /* 舊存檔處理：若沒有 v4 存檔但有 3.2 存檔 → 自動匯入（不覆蓋、不刪除舊資料） */
  let migrated=0;if(OC.Store.isNew()&&OC.Store.hasLegacy()){try{migrated=await OC.Store.importLegacy();S.flags.introSeen=true;S.flags.started=true;S.flags.tutorialDone=true}catch(e){console.error('legacy',e)}}
- for(const c of S.chars)OC.Chars.ensure(c);
- if(!S.activeId&&S.chars[0])S.activeId=S.chars[0].id;
+ const fixes=OC.Store.validate();
+ /* 素材預先載入記憶體：介面可同步顯示圖片，不會先空白再跳出來 */
+ await OC.Store.Assets.preload(OC.Store.refs());
  await OC.Creations.load();OC.Scenes.syncHouse();OC.Scenes.syncFurn();OC.Scenes.syncBuilds();
  Env.update();R.init(OC.U.$('#world'));Input.init(OC.U.$('#world'));
  const loc=S.flags.started?S.world.loc:'home';R.setScene(OC.Content.LOC[loc]?loc:'home');
@@ -89,6 +92,9 @@ async function boot(){const S=OC.Store.load();OC.Pages.applyTheme();OC.Pages.ini
   if(!S.flags.houseChosen)setTimeout(()=>OC.Intro.houseOnly(),1400)}
  else{OC.UI.init();OC.Intro.start()}
  Loop.start();OC.Native&&OC.Native.init&&OC.Native.init();
+ const info=OC.Store.loadInfo;if(info.src==='backup'||info.src==='snapshot')setTimeout(()=>OC.UI.toast(info.src==='backup'?'主存檔讀取失敗，已從備援存檔還原':'存檔損毀，已從最近的每日快照還原','warn'),1200);
+ else if(fixes.length)setTimeout(()=>OC.UI.toast(`已自動修復 ${fixes.length} 處存檔問題`,'info'),1200);
+ if(S.flags.started)OC.Store.flush();setTimeout(()=>OC.Store.snapshot(),5000);
  const sp=OC.U.$('#splash');if(sp){sp.classList.add('out');setTimeout(()=>sp.remove(),600)}}
 OC.Loop=Loop;OC.Cam=Cam;OC.Input=Input;OC.World=World;OC.boot=boot;
 })(window.OC);

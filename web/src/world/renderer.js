@@ -59,7 +59,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
  /* =================== 每格繪製 =================== */
  frame(dt){const ctx=this.ctx,cam=this.cam,perf=OC.Store.perf();this.t+=dt;this.perf=perf;cam.update();
   if(cam.shake>0){cam.shake=Math.max(0,cam.shake-dt*2)}
-  const key=cam.key()+':'+Env.ver+':'+this.sc.id+':'+(this.sc.ver||0);
+  const key=cam.key()+':'+Env.ver+':'+this.sc.id+':'+(this.sc.ver||0)+':'+perf.shadows;
   if(key!==this.skey){this.skey=key;this.drawStatic()}
   ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(this.static,0,0);ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
   if(this.sc.kind!=='room'){this.drawSkyLive(ctx);this.drawWater(ctx);if(perf.cloudShadow&&!Env.isNight())this.drawCloudShadows(ctx)}
@@ -106,13 +106,13 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
    this.extrude(g,L.pts,0,raise,U.rgb(U.shade(U.hex(col),-.32)))}
   const q=this.fillPoly(g,L.pts,raise,col);
   if(this.perf.shadows&&L.col!=='sand'){/* Low-Poly 地面色塊：在多邊形內以世界格線切三角形，依雜訊微調明暗 */
-   g.save();g.clip();const cam=this.cam,b=this.sc.bounds,C=U.hex(col);const step=L.col==='stone'?1.2:1.7;
-   const x0=Math.floor((b[0]-3)/step)*step,z0=Math.floor((b[1]-4)/step)*step;
-   for(let z=z0;z<b[3]+3;z+=step)for(let x=x0;x<b[2]+3;x+=step){const n1=U.noise2(x*.21,z*.21),n2=U.noise2(x*.21+7,z*.21+3);
-    const a=cam.p(x,raise,z),bb=cam.p(x+step,raise,z),c=cam.p(x+step,raise,z+step),d=cam.p(x,raise,z+step);
-    if(c.y<0||a.y>this.H||c.x<-60||d.x>this.W+60&&a.x>this.W+60)continue;
-    g.fillStyle=U.rgb(U.shade(C,(n1-.5)*.16));g.beginPath();g.moveTo(a.x,a.y);g.lineTo(bb.x,bb.y);g.lineTo(d.x,d.y);g.fill();
-    g.fillStyle=U.rgb(U.shade(C,(n2-.5)*.16-.02));g.beginPath();g.moveTo(bb.x,bb.y);g.lineTo(c.x,c.y);g.lineTo(d.x,d.y);g.fill()}
+   g.save();g.clip();const cam=this.cam;
+   /* 色塊顏色只算一次（快取在多邊形上）；每次重畫只投影每個格點一次 */
+   const F=L._fc||(L._fc=facetGrid(this.sc.bounds,col,L.col==='stone'?1.2:1.7));const P=F.pts,nx=F.nx;
+   for(let i=0;i<P.length;i++){const q=cam.p(P[i][0],raise,P[i][1]);F.sx[i]=q.x;F.sy[i]=q.y}
+   for(let j=0;j<F.nz-1;j++)for(let i=0;i<nx-1;i++){const a=j*nx+i,b=a+1,d=a+nx,c=d+1;if(F.sy[c]<0||F.sy[a]>this.H||F.sx[b]<-60||F.sx[a]>this.W+60)continue;
+    g.fillStyle=F.c1[a];g.beginPath();g.moveTo(F.sx[a],F.sy[a]);g.lineTo(F.sx[b],F.sy[b]);g.lineTo(F.sx[d],F.sy[d]);g.fill();
+    g.fillStyle=F.c2[a];g.beginPath();g.moveTo(F.sx[b],F.sy[b]);g.lineTo(F.sx[c],F.sy[c]);g.lineTo(F.sx[d],F.sy[d]);g.fill()}
    g.restore()}
   if(L.col==='sand'){/* 沙灘濕潤邊 */g.strokeStyle='rgba(205,190,150,.55)';g.lineWidth=3;g.beginPath();q.forEach(([x,y],i)=>i?g.lineTo(x,y+1.5):g.moveTo(x,y+1.5));g.closePath();g.stroke()}},
  extrude(g,pts,y0,h,fill){const cam=this.cam,n=pts.length;const faces=[];
@@ -220,7 +220,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   OC.Rig.draw(ctx,a,q.x,q.y,s,dt)},
  /* ---------- 粒子 ---------- */
  /* 小鳥：在地上跳、啄食；有夥伴靠近就飛走，過一陣子再回來 */
- birds(ctx,dt){if(!this.perf.ambient||this.sc.kind==='room')return;const sc=this.sc;if(this._bsc!==sc.id){this._bsc=sc.id;this.bl=[];const n=sc.id==='beach'?4:3;for(let i=0;i<n;i++){const p=sc.randomPoint();this.bl.push({x:p.x,z:p.z,y:0,vy:0,vx:0,f:1,t:Math.random()*3,sea:sc.id==='beach',gone:0})}}
+ birds(ctx,dt){if(!this.perf.ambient||this.sc.kind==='room'||this.perf.particles===0)return;const sc=this.sc;if(this._bsc!==sc.id){this._bsc=sc.id;this.bl=[];const n=sc.id==='beach'?4:3;for(let i=0;i<n;i++){const p=sc.randomPoint();this.bl.push({x:p.x,z:p.z,y:0,vy:0,vx:0,f:1,t:Math.random()*3,sea:sc.id==='beach',gone:0})}}
   const cam=this.cam;for(const b of this.bl){b.t+=dt;if(b.gone>0){b.gone-=dt;b.y+=dt*2.2;b.x+=b.vx*dt;if(b.gone<=0){const p=sc.randomPoint();b.x=p.x;b.z=p.z;b.y=4;b.land=1}else{this.drawBird(ctx,b,true);continue}}
    if(b.land){b.y=Math.max(0,b.y-dt*3);if(b.y<=0)b.land=0}
    for(const a of this.actors){if(Math.hypot(a.x-b.x,a.z-b.z)<1.5&&!b.land){b.gone=6+Math.random()*6;b.vx=(b.x>a.x?1:-1)*U.rnd(1.5,3);break}}
@@ -262,7 +262,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   if(!this.vig||this.vig.w!==W||this.vig.h!==H){const c=document.createElement('canvas');c.width=W/2|0;c.height=H/2|0;const g=c.getContext('2d');const gr=g.createRadialGradient(c.width/2,c.height*.55,Math.min(c.width,c.height)*.35,c.width/2,c.height*.55,Math.max(c.width,c.height)*.75);gr.addColorStop(0,'rgba(40,30,50,0)');gr.addColorStop(1,'rgba(40,30,50,.22)');g.fillStyle=gr;g.fillRect(0,0,c.width,c.height);this.vig={c,w:W,h:H}}
   ctx.drawImage(this.vig.c,0,0,W,H)},
  /* ---------- 天氣粒子（螢幕空間） ---------- */
- drawWeather(ctx,dt){const W=this.W,H=this.H,t=this.t,amt=this.perf.particles;if(this.sc.kind==='room'){if(Env.rainy()&&amt>0){/* 窗戶上的雨 */}return}
+ drawWeather(ctx,dt){const W=this.W,H=this.H,t=this.t,amt=this.perf.weather===0?0:this.perf.particles;if(this.sc.kind==='room'){if(Env.rainy()&&amt>0){/* 窗戶上的雨 */}return}
   if(!this.wx)this.wx=[...Array(160)].map(()=>({x:Math.random(),y:Math.random(),s:Math.random()}));
   if(Env.rainy()&&amt>0){const n=Math.floor((Env.wid==='storm'?150:100)*amt);ctx.strokeStyle='rgba(220,232,245,.5)';ctx.lineWidth=1.1;ctx.beginPath();
    for(let i=0;i<n;i++){const p=this.wx[i];p.y+=dt*(1.6+p.s*.8);p.x+=dt*.18*Env.wind;if(p.y>1){p.y-=1;p.x=Math.random()}const x=p.x*W,y=p.y*H,l=10+p.s*8;ctx.moveTo(x,y);ctx.lineTo(x-l*.22*Env.wind,y-l)}ctx.stroke();
@@ -274,9 +274,10 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
     else{p.x+=dt*(.03+p.s*.03)*(1+Env.wind);p.y+=dt*.02+Math.sin(t+i)*dt*.01;if(p.x>1.05){p.x=-.05;p.y=Math.random()*.7}const x=p.x*W,y=p.y*H;ctx.globalAlpha=.75;ctx.fillStyle=i%3?'#F7C6D3':'#FFFFFF';ctx.save();ctx.translate(x,y);ctx.rotate(t*2+i);ctx.beginPath();ctx.ellipse(0,0,3.2,1.6,0,0,TAU);ctx.fill();ctx.restore()}}
    ctx.globalAlpha=1}},
  /* ---------- 名字、對話泡泡、情緒符號（畫在色調之後，保持清晰） ---------- */
- drawOverlay(ctx){const showNames=OC.S.settings.names!==false;for(const a of this.actors){if(a.visible===false||!a.ss)continue;const s=a.ss,c=a.c;const top=a.sy-s*1.38*c.scale*(c.kind==='image'?1.05:1)-(a.headOff||0);
+ drawOverlay(ctx){const showNames=OC.S.settings.names!==false;const placed=[];for(const a of [...this.actors].sort((p,q)=>(q.sy||0)-(p.sy||0))){if(a.visible===false||!a.ss)continue;const s=a.ss,c=a.c;const top=a.sy-s*1.38*c.scale*(c.kind==='image'?1.05:1)-(a.headOff||0);
   if(a.emote)drawEmote(ctx,a,a.sx+s*.34,top+s*.12,s,this.t);
-  if(a.bubble&&OC.S.settings.bubbles!==false)drawBubble(ctx,a.bubble,a.sx,top-4,this.t);
+  if(a.bubble&&OC.S.settings.bubbles!==false){const b=a.bubble;const lines=Math.min(3,Math.ceil(b.text.length/12));const w=Math.min(190,b.text.length*13.5+24),h=lines*18+14;let y=top-4;
+   for(let k=0;k<6;k++){const hit=placed.find(r=>Math.abs(r.x-a.sx)<(r.w+w)/2+4&&y-h-12<r.y&&y>r.y-r.h-12);if(!hit)break;y=hit.y-hit.h-16}placed.push({x:a.sx,y,w,h});drawBubble(ctx,b,a.sx,y,this.t)}
   else if(showNames&&(a.focus||a.nameT>0)){const al=a.focus?1:Math.min(1,a.nameT);ctx.globalAlpha=al*.92;const txt=c.name;ctx.font='600 11px "Nunito","Noto Sans TC",sans-serif';const w=ctx.measureText(txt).width+14;
    const y=a.sy+8;rrect(ctx,a.sx-w/2,y,w,18,9);ctx.fillStyle='rgba(255,252,244,.92)';ctx.fill();ctx.fillStyle='#5B4B45';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,a.sx,y+9.5);ctx.textAlign='start';ctx.textBaseline='alphabetic';ctx.globalAlpha=1}}
   /* 地點提示環（佈置、放置房子） */
@@ -284,6 +285,9 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   if(OC.Cine)OC.Cine.draw(ctx,this.W,this.H)}};
 
 /* ---------- 小工具 ---------- */
+function facetGrid(b,col,step){const C=U.hex(col);const x0=Math.floor((b[0]-3)/step)*step,z0=Math.floor((b[1]-4)/step)*step;const nx=Math.ceil((b[2]+3-x0)/step)+1,nz=Math.ceil((b[3]+3-z0)/step)+1;
+ const pts=[],c1=[],c2=[];for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const x=x0+i*step,z=z0+j*step;pts.push([x,z]);c1.push(U.rgb(U.shade(C,(U.noise2(x*.21,z*.21)-.5)*.16)));c2.push(U.rgb(U.shade(C,(U.noise2(x*.21+7,z*.21+3)-.5)*.16-.02)))}
+ return{pts,c1,c2,nx,nz,sx:new Float32Array(pts.length),sy:new Float32Array(pts.length)}}
 function polyArea(p){let a=0;for(let i=0,j=p.length-1;i<p.length;j=i++)a+=(p[j][0]+p[i][0])*(p[j][1]-p[i][1]);return a}
 function centroid(p){let x=0,z=0;for(const q of p){x+=q[0];z+=q[1]}return[x/p.length,z/p.length]}
 function densify(pts,step){const o=[];for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];const n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/step));for(let k=0;k<n;k++)o.push([U.lerp(a[0],b[0],k/n),U.lerp(a[1],b[1],k/n)])}o.push(pts[pts.length-1]);return o}
@@ -311,7 +315,9 @@ function drawEmote(ctx,a,x,y,s,t){const e=a.emote;const k=Math.min(1,e.t/.25),po
 function wrap(ctx,txt,maxW){const out=[];let line='';for(const ch of [...txt]){const tt=line+ch;if(ctx.measureText(tt).width>maxW&&line){out.push(line);line=ch}else line=tt}if(line)out.push(line);return out.slice(0,3)}
 function drawBubble(ctx,b,x,y,t){const k=Math.min(1,b.t/.22),e=U.ease.back(k),fade=b.life-b.t<.35?Math.max(0,(b.life-b.t)/.35):1;if(fade<=0)return;
  ctx.font='600 13px "Nunito","Noto Sans TC",sans-serif';const lines=b._l||(b._l=wrap(ctx,b.text,170));const w=Math.min(190,Math.max(...lines.map(l=>ctx.measureText(l).width))+24),h=lines.length*18+14;
- const bx=U.clamp(x-w/2,8,R.W-w-8),by=y-h-12;ctx.save();ctx.globalAlpha=fade;ctx.translate(x,y);ctx.scale(.7+.3*e,.7+.3*e);ctx.translate(-x,-y);
+ let bx=U.clamp(x-w/2,8,R.W-w-8);const by=y-h-12;
+ /* 避開右側 HUD 按鈕列（UI 每秒量一次位置，存在 R.safe） */
+ const S=R.safe;if(S&&by<S.b&&by+h>S.t&&bx+w>S.l-6)bx=Math.max(8,S.l-w-6);ctx.save();ctx.globalAlpha=fade;ctx.translate(x,y);ctx.scale(.7+.3*e,.7+.3*e);ctx.translate(-x,-y);
  ctx.shadowColor='rgba(70,50,40,.18)';ctx.shadowBlur=8;ctx.shadowOffsetY=2;rrect(ctx,bx,by,w,h,13);ctx.fillStyle=b.tone==='angry'?'#FFF1EC':b.tone==='sad'?'#EEF3FB':'#FFFCF4';ctx.fill();ctx.shadowColor='transparent';
  ctx.beginPath();const tx=U.clamp(x,bx+16,bx+w-16);ctx.moveTo(tx-7,by+h-1);ctx.lineTo(tx,by+h+8);ctx.lineTo(tx+6,by+h-1);ctx.fill();
  if(b.who){ctx.fillStyle='#B08F7E';ctx.font='700 9px "Nunito","Noto Sans TC",sans-serif';}

@@ -47,7 +47,7 @@ const Bag={trayOpen:false,target:null,
    <div class="it-act">${usable?`<button class="btn primary" data-a="use">${Icons.svg('gift',20)}給夥伴</button>`:''}${place?`<button class="btn primary" data-a="place">${Icons.svg('hammer',20)}擺放</button>`:''}
     <button class="btn" data-a="pin">${Icons.svg('star',20)}${pins.includes(id)?'移出常用':'加入常用'}</button>${it.sell?`<button class="btn ghost" data-a="sell">${Icons.svg('coin',18)}賣出 ${it.sell}</button>`:''}</div>`,{cls:'it-s'});OC.Rig.fillImgs(s.el);
   s.el.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
-   if(a==='pin'){const i=pins.indexOf(id);if(i>=0)pins.splice(i,1);else pins.push(id);OC.Store.save();s.close();this.detail(id)}
+   if(a==='pin'){const i=pins.indexOf(id);if(i>=0)pins.splice(i,1);else pins.push(id);OC.Store.save();b.innerHTML=`${OC.Icons.svg('star',20)}${pins.includes(id)?'移出常用':'加入常用'}`;if(OC.Pages.cur==='bag')OC.Pages.render()}
    else if(a==='sell'){if(OC.Shop.sell(id)){OC.UI.toast(`賣出 +${it.sell} 星幣`,'coin');s.close();if(Items.qty(id))this.detail(id);OC.Pages.render()}}
    else if(a==='place'){s.close();OC.Pages.close();OC.Deco.placeItem(id)}
    else if(a==='use'){s.close();this.chooseChar(ch=>{OC.Pages.close();setTimeout(()=>{const ag=OC.Sim.get(ch.id);if(!ag)return;if(ag.loc!==OC.R.sc.id)OC.World.go(ag.loc,{focus:ag});setTimeout(()=>OC.Play.give(ag,id),ag.loc!==OC.R.sc.id?700:200)},250)})}})},
