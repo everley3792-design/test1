@@ -10,7 +10,7 @@ const FACES={
  neutral:'.eye-o,.mouth-n',blink:'.eye-c,.mouth-n',joy:'.eye-h,.mouth-h',wow:'.eye-wow,.mouth-o',soft:'.eye-soft,.mouth-n',
  worry:'.eye-worry,.mouth-pout',angry:'.eye-tsun,.mouth-pout',sleep:'.eye-c,.mouth-n',talk:'.eye-o,.mouth-o',pout:'.eye-o,.mouth-pout',joyTalk:'.eye-h,.mouth-o'};
 const FACE_HIDE='.eye-o,.eye-c,.eye-h,.eye-extra,.mouth-n,.mouth-h,.mouth-o,.mouth-extra{display:none}';
-const svgNS=s=>s.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" width="'+240*RS+'" height="'+260*RS+'" ');
+const svgNS=s=>s.replace(/<svg([^>]*)>/,(m,a)=>'<svg'+(a.includes('xmlns=')?'':' xmlns="http://www.w3.org/2000/svg"')+a.replace(/\s(width|height)="[^"]*"/g,'')+' width="'+240*RS+'" height="'+260*RS+'">');
 const withStyle=(svg,css)=>svgNS(svg).replace(/(<svg[^>]*>)/,'$1<style>'+css+'</style>');
 function raster(svg){return new Promise(res=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>res(null);img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)})}
 /* 裁掉透明邊，降低記憶體 */
@@ -26,11 +26,13 @@ const Rig={RS,
   if(c.kind==='image'){const url=await OC.Store.Assets.get(c.img);const img=url&&await raster0(url);if(!img){entry.err=1;return}
    const cr=crop(img)||{cv:img,ox:0,oy:0};/* 匯入圖：底部對齊地面，高度 1.15m */
    entry.image={cv:cr.cv,w:cr.cv.width,h:cr.cv.height};entry.kind='image';entry.ready=true;U.emit('rig',c.id);return}
-  const svg=OC.ocSVG({look:c.look});
+  const svg0=OC.ocSVG({look:c.look});
   /* 量測各部位位置（tail 的支點） */
-  const host=document.createElement('div');host.style.cssText='position:fixed;left:-2000px;top:0;width:240px;height:260px;visibility:hidden;pointer-events:none';host.innerHTML=svg;document.body.appendChild(host);
+  const host=document.createElement('div');host.style.cssText='position:fixed;left:-2000px;top:0;width:240px;height:260px;visibility:hidden;pointer-events:none';host.innerHTML=svg0;document.body.appendChild(host);
   const sv=host.firstElementChild,sr=sv.getBoundingClientRect(),bb=sel=>{const n=sv.querySelector(sel);if(!n)return null;const r=n.getBoundingClientRect();return r.width?{x:r.left-sr.left,y:r.top-sr.top,w:r.width,h:r.height}:null};
-  const tb=bb('.tail-side'),fl=bb('.foot.fl'),fr=bb('.foot.fr'),hb=bb('.head-g');host.remove();
+  const tb=bb('.tail-side'),fl=bb('.foot.fl'),fr=bb('.foot.fr'),hb=bb('.head-g');
+  /* 經瀏覽器解析後重新序列化成合法 XML（舊版造型有少數未閉合標籤） */
+  let svg=svg0;try{svg=new XMLSerializer().serializeToString(sv)}catch(e){}host.remove();
   const L={},jobs=[];
   const add=(name,css)=>jobs.push(raster(withStyle(svg,css)).then(img=>{if(img){const r=crop(img);if(r)L[name]=r}}));
   add('tail','.head-g{display:none}.body-g>*:not(.tail-side){display:none}');

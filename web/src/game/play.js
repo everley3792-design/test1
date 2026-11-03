@@ -17,7 +17,11 @@ const Play={
   /* 太多了：怕癢、高冷的夥伴會想逃 */
   if(P.strokes>24&&Chars.sl(c,'indep')>.7&&Math.random()<.2){a.say('好了啦，夠了夠了。');this.petEnd(a);a.hop(1.4)}},
  petEnd(a){const P=a.petting;if(!P)return;a.petting=null;a.petY=0;if(!(a.task&&a.task.def.pose==='sleep'))a.pose='stand';
-  if(P.strokes>=4)U.emit('tut','pet');if(P.strokes>=6){this.happy(a);OC.Sim.checkWish(a,'pet');OC.Sim.remember(a.c,'pet','被你摸摸頭',.5);OC.Sim.log(a.c,`你摸了摸${a.c.name}的頭`,'hand')}
+  if(P.strokes>=4)U.emit('tut','pet');
+  /* 吃醋：愛吃醋的夥伴看到你只摸別人會不開心 */
+  if(P.strokes>=8&&OC.S.settings.negEvents!==false)for(const o of OC.Sim.agents.values()){if(o===a||o.loc!==a.loc||o.busy()||!Chars.has(o.c,'jealous')&&!Chars.has(o.c,'clingy'))continue;if(Math.hypot(o.x-a.x,o.z-a.z)>8||Math.random()>.6)continue;
+   setTimeout(()=>{o.face='pout';o.feel('gloom');o.say(Chars.has(o.c,'jealous')?'…為什麼只摸牠。':'我、我也想被摸摸…',{tone:'sad'});o.c.emo.sad=Math.min(1,o.c.emo.sad+.2);if(Chars.has(o.c,'jealous')){const r=OC.Social.rel(o.id,a.id);r.conf=Math.min(100,r.conf+10)}o.c.wishes.push({k:'pet',t:Date.now(),id:U.uid('w')});setTimeout(()=>o.face=null,2200)},900);break}
+  if(P.strokes>=6){this.happy(a);OC.Sim.checkWish(a,'pet');OC.Sim.remember(a.c,'pet','被你摸摸頭',.5);OC.Sim.log(a.c,`你摸了摸${a.c.name}的頭`,'hand')}
   OC.Store.save()},
  /* 開心反應（小怪癖） */
  happy(a){const q=a.c.quirks.happy;a.face='joy';setTimeout(()=>{if(a.face==='joy')a.face=null},1600);

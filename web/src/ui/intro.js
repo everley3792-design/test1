@@ -37,7 +37,7 @@ const Intro={
  /* ---------- 3. 選房子 ---------- */
  house(again){const el=this.el();el.hidden=false;el.className='intro on';OC.UI.blockWorld=true;$('#hud').classList.add('hide');$('#nav').classList.add('hide');
   el.innerHTML=`<div class="in-card"><h2>${again?'換一棟房子':'選一棟你們的家'}</h2><p class="lead">房子會放在家園小島上，裡面已經有床、餐桌、小廚房、書櫃和沙發。</p><div class="houses">${C.HOUSES.map((h,i)=>`<button class="hs ${i===0?'on':''}" data-h="${h.id}"><canvas width="220" height="200" data-hc="${h.id}"></canvas><b>${esc(h.t)}</b><small>${esc(h.d)}</small></button>`).join('')}</div>
-   <button class="btn primary big" data-place>放到小島上</button>${again?'<button class="link" data-cancel>取消</button>':''}</div>`;
+   <button class="btn primary big" data-place>放到小島上</button>${again?'<button class="link" data-cancel>取消</button>':OC.S.flags.started?'<button class="link" data-cancel>稍後再選</button>':''}</div>`;
   this.style=C.HOUSES[0].id;
   el.querySelectorAll('[data-hc]').forEach(cv=>{const s=OC.Sprites.house(cv.dataset.hc);const g=cv.getContext('2d');const k=Math.min(cv.width/s.cv.width,cv.height/s.cv.height);g.drawImage(s.cv,(cv.width-s.cv.width*k)/2,(cv.height-s.cv.height*k),s.cv.width*k,s.cv.height*k)});
   el.onclick=e=>{const b=e.target.closest('button');if(!b)return;U.buzz(6);if(b.dataset.h){this.style=b.dataset.h;el.querySelectorAll('[data-h]').forEach(x=>U.toggle(x,'on',x===b))}else if(b.hasAttribute('data-place'))this.place();else if(b.hasAttribute('data-cancel'))this.finishIntro()}},

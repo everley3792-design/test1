@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">OC Shimeji</string>
+    <string name="pet_channel">桌寵</string>
+    <string name="pet_running">夥伴正在桌面上陪你</string>
+    <string name="pet_hide">隱藏</string>
+    <string name="pet_show">顯示</string>
+    <string name="pet_stop">結束桌寵</string>
+    <string name="pet_open">開啟小島</string>
+    <string name="overlay_needed">請允許「顯示在其他應用程式上層」，桌寵才能出現在桌面上</string>
+</resources>

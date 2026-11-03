@@ -7,7 +7,7 @@ const Social={LBL,
  rel(a,b){const k=key(a,b);let r=OC.S.rel[k];if(!r){r=OC.S.rel[k]={f:0,r:0,trust:20,conf:0,fam:0,mem:[],last:0,broken:false,lovers:false,tag:null,noRomance:false,greet:''}}return r},
  status(r){if(r.broken)return'broken';if(r.lovers)return'lovers';if(r.tag)return r.tag;if(r.f<=-30)return'bad';if(r.f>=70)return'best';if(r.f>=40)return'good';if(r.f>=15)return'friend';return r.fam>=3?'acq':'stranger'},
  label(r){return LBL[this.status(r)]},
- change(a,b,df,o={}){const r=this.rel(a.c?a.c.id:a,b.c?b.c.id:b);const before=this.status(r);r.f=U.clamp(r.f+df,-100,100);if(o.conf)r.conf=U.clamp(r.conf+o.conf,0,100);if(o.trust)r.trust=U.clamp(r.trust+o.trust,0,100);if(o.r)r.r=U.clamp(r.r+o.r,0,100);r.fam++;r.last=Date.now();
+ change(a,b,df,o={}){const r=this.rel(a.c?a.c.id:a,b.c?b.c.id:b);const before=this.status(r);if(df>0)df*=U.clamp(1-Math.max(0,r.f)/125,.12,1)*.55;r.f=U.clamp(r.f+df,-100,100);if(o.conf)r.conf=U.clamp(r.conf+o.conf,0,100);if(o.trust)r.trust=U.clamp(r.trust+o.trust,0,100);if(o.r)r.r=U.clamp(r.r+o.r,0,100);r.fam++;r.last=Date.now();
   const after=this.status(r);if(after!==before&&!['acq','stranger'].includes(after)){const A=nameOf(a),B=nameOf(b);if(['friend','good','best'].includes(after)&&rank(after)>rank(before)){OC.Sim.log(null,`${A}和${B}的關係變成了「${LBL[after]}」！`,'heart');OC.UI&&OC.UI.toast(`${A} ♥ ${B}：${LBL[after]}`,'heart');addMem(r,`成為${LBL[after]}`,.8)}else if(after==='bad'){OC.Sim.log(null,`${A}和${B}的關係變差了…`,'cloud')}}
   U.emit('rel');return r},
  bond(a,b,n,why){const r=this.change(a,b,n,{trust:n*.5});if(why)addMem(r,why,.5)},
@@ -15,7 +15,7 @@ const Social={LBL,
 
  /* ============ 是否要找人互動 ============ */
  maybe(a){if(OC.S.settings.autoSocial===false)return;const c=a.c;if(a.task&&(a.task.def.ex||a.task.def.pose==='sleep'))return;if(a.inside||a.away)return;
-  const near=[...OC.Sim.agents.values()].filter(o=>o!==a&&o.loc===a.loc&&!o.away&&!o.busy()&&!(o.task&&o.task.def.pose==='sleep')&&Math.hypot(o.x-a.x,o.z-a.z)<(a.loc==='house'?9:7.5));
+  const near=[...OC.Sim.agents.values()].filter(o=>o!==a&&o.loc===a.loc&&!o.away&&!o.busy()&&OC.Sim.casual(o)&&!(o.task&&o.task.def.pose==='sleep')&&!((a.avoid_||{})[o.id]>Date.now())&&Math.hypot(o.x-a.x,o.z-a.z)<(a.loc==='house'?9:7.5));
   if(!near.length)return;
   const want=(1-c.needs.social/100)*.75+Chars.sl(c,'social')*.35+(Chars.has(c,'chatty')?.2:0)-(Chars.has(c,'loner')?.25:0)+(c.emo.anger>.4?.25:0);
   if(Math.random()>want)return;
@@ -33,7 +33,7 @@ const Social={LBL,
   add('comfort',(d.health.sick||d.mood==='sad'||d.emo.sad>.4)?2.2*Chars.soc(c,'comfort'):0);
   add('gift',r.f>25&&Math.random()<.3?.5:0);
   add('apology',r.conf>35?1.6*Chars.soc(c,'forgive'):0);
-  if(neg){const base=.06*Chars.soc(c,'argue')*grumpy(c)*(r.f<0?2.2:r.f>60?.4:1)*(r.conf>30?1.8:1)*(Chars.has(c,'jealous')&&d.bond>c.bond+20?2:1);add('argue',base);add('tease',Chars.has(c,'prank')||Chars.has(c,'sharp')?.4:0)}
+  if(neg){const base=.1*Chars.soc(c,'argue')*grumpy(c)*(r.f<0?2.2:r.f>60?.4:1)*(r.conf>30?1.8:1)*(Chars.has(c,'jealous')&&d.bond>c.bond+20?2:1);add('argue',base);add('tease',Chars.has(c,'prank')||Chars.has(c,'sharp')?.4:0)}
   if(OC.S.settings.romance!==false&&!r.noRomance&&!r.lovers&&r.f>55&&!c.noRomance&&!d.noRomance)add('flirt',.25*(Chars.has(c,'romantic')?2.5:1));
   if(r.lovers)add('date',.9);
   return(U.weighted(W)||{k:'chat'}).k},
@@ -62,7 +62,8 @@ const Social={LBL,
    case'greet':{const g={wave:'揮揮手',bow:'鞠躬',hop:'跳起來',hug:'抱抱',nod:'點點頭',peek:'偷看'}[c.quirks.greet];r.greet=U.dayKey();
     act(()=>{if(c.quirks.greet==='hop')a.hop(2);else if(c.quirks.greet==='bow')a.squash(.85);else if(c.quirks.greet==='hug'){a.feel('heart')}else if(c.quirks.greet==='peek'){a.face='soft'}},.3);
     say(a,U.pick(L.greet)+(Chars.has(c,'polite')?' 今天也請多指教。':''));say(b,Chars.has(d,'shy')?'啊…你、你好。':U.pick(L.greet),{emo:Chars.has(d,'shy')?'blush':null});gain(2);break}
-   case'chat':{const t=pickTopic();say(a,t);const agree=Math.random()<.5+Chars.sl(d,'friendly')*.4;say(b,agree?U.pick(['對啊對啊！','真的耶～','我也這麼覺得。','嗯嗯！']):U.pick(['是嗎？','我倒是覺得還好。','嗯…']),{emo:agree?'note':null});
+   case'chat':{if(OC.S.settings.negEvents!==false&&(Chars.has(d,'sensitive')||Chars.has(d,'moody')||Chars.has(d,'tsun'))&&Math.random()<.07){say(a,pickTopic());say(b,'……你是在說我嗎？',{tone:'angry',emo:'anger'});act(()=>{b.face='angry';d.emo.anger=Math.min(1,d.emo.anger+.3);this.change(a,b,-3,{conf:10});OC.Sim.remember(d,'misunderstand',`誤會了${c.name}的話`,-.3,[c.id])},.3);say(a,'欸？我不是那個意思啦…',{emo:'sweat'});break}
+    const t=pickTopic();say(a,t);const agree=Math.random()<.5+Chars.sl(d,'friendly')*.4;say(b,agree?U.pick(['對啊對啊！','真的耶～','我也這麼覺得。','嗯嗯！']):U.pick(['是嗎？','我倒是覺得還好。','嗯…']),{emo:agree?'note':null});
     if(Math.random()<.5)say(a,U.pick(['嘿嘿。','下次一起去吧！','跟你聊天好開心。']));gain(agree?4:2);break}
    case'joke':{say(a,U.pick(L.joke));const laugh=!Chars.has(d,'serious')&&!Chars.has(d,'quiet')&&Math.random()<.75;act(()=>{if(laugh){b.face='joy';b.pose='cheer';b.hop(1.4);d.needs.fun=Math.min(100,d.needs.fun+15)}else b.face='pout'},.4);
     say(b,laugh?U.pick(['哈哈哈！','噗——你好好笑！','笑到肚子痛了～']):U.pick(['……這好笑嗎？','冷笑話警報。']),{emo:laugh?'note':'sweat'});gain(laugh?5:-1);break}
@@ -97,6 +98,7 @@ const Social={LBL,
     const r=this.change(a,b,-U.rnd(14,22),{conf:35,trust:-12});OC.Sim.remember(c,'fight',`和${d.name}大吵一架`,-.9,[d.id]);OC.Sim.remember(d,'fight',`和${c.name}大吵一架`,-.9,[c.id]);OC.Sim.log(null,`${c.name}和${d.name}大吵了一架！`,'anger');OC.UI&&OC.UI.toast(`${c.name}和${d.name}吵架了…`,'anger');
     if(Chars.soc(c,'hurt')>1.2&&Math.random()<.35)OC.Sim.getSick(a,'blue');if(Chars.soc(d,'hurt')>1.2&&Math.random()<.35)OC.Sim.getSick(b,'blue');
     if(r.f<-40&&r.conf>60&&!r.broken&&!OC.S.pending.some(p=>p.k==='breakup'&&((p.a===c.id&&p.b===d.id)||(p.a===d.id&&p.b===c.id)))){OC.S.pending.push({id:U.uid('p'),k:'breakup',a:c.id,b:d.id,t:Date.now()});U.emit('pending')}
+    for(const [x,y] of [[a,b],[b,a]]){x.avoid_=x.avoid_||{};x.avoid_[y.id]=Date.now()+8*60e3}
     /* 生氣地走開 */
     const sc=OC.Scenes.get(a.loc);for(const [x,y] of [[a,b],[b,a]]){const p=sc.near(x.x+(x.x>y.x?4:-4),x.z,2);x.goal={x:p.x,z:p.z}}},.4)}
   else{act(()=>{this.change(a,b,-U.rnd(5,9),{conf:16});c.emo.anger=Math.min(1,c.emo.anger+.35);d.emo.anger=Math.min(1,d.emo.anger+.35);OC.Sim.remember(c,'argue',`和${d.name}拌嘴`,-.4,[d.id]);OC.Sim.remember(d,'argue',`和${c.name}拌嘴`,-.4,[c.id]);OC.Sim.log(null,`${c.name}和${d.name}拌了幾句嘴。`,'cloud')},.3);say(a,'哼！',{tone:'angry'})}},

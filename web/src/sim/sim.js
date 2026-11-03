@@ -36,7 +36,8 @@ const Sim={agents:new Map(),acc:0,t:0,
  /* 4Hz：需求、情緒、決策、社交 */
  slow(dt){const H=dt/3600;for(const a of this.agents.values()){const c=a.c;this.decay(c,H,a);this.health(a,dt);this.moodOf(c);
    if(!a.busy()&&!a.task){a.dcd-=dt;if(a.dcd<=0){a.dcd=U.rnd(1.5,4)/(.6+Chars.sl(c,'pace')*.8);this.decide(a)}}
-   a.socT-=dt;if(a.socT<=0&&!a.busy()){a.socT=U.rnd(10,22)/(.5+Chars.sl(c,'social'));OC.Social&&OC.Social.maybe(a)}
+   a.socT-=dt;if(a.socT<=0&&!a.busy()){a.socT=U.rnd(30,70)/(.5+Chars.sl(c,'social'));if(Sim.casual(a))OC.Social&&OC.Social.maybe(a)}
+   a.evT=(a.evT||U.rnd(120,300))-dt;if(a.evT<=0){a.evT=U.rnd(180,420);Sim.mishap(a)}
    c.x=a.x;c.z=a.z}
   this.saveT=(this.saveT||0)+dt;if(this.saveT>8){this.saveT=0;OC.Store.save()}
   this.wishT=(this.wishT||0)+dt;if(this.wishT>45){this.wishT=0;for(const a of this.agents.values())this.wish(a)}
@@ -60,16 +61,18 @@ const Sim={agents:new Map(),acc:0,t:0,
   const sleepy=(night?1:0)+(h>=22||h<6?.6:0)-chrono*.25;
   const cands=[];
   for(const d of Acts.ACTS){if(d.loc.includes('house')&&d.loc.length===1&&!hasHouse)continue;
-   let g=0;for(const [k,v] of Object.entries(d.gain))g+=v*urg(c.needs[k])*Chars.needW(c,k);if(g<=0)g=.02;
-   let w=g*d.w*Chars.aiW(c,d.id);
-   for(const [k,v] of Object.entries(Acts.AI_ALIAS))if(v===d.id)w*=Chars.aiW(c,k);
+   /* 效用 = 實際能補足的需求（不超過缺口）× 急迫度 + 興趣嗜好（由特質決定） */
+   const dur=(d.dur[0]+d.dur[1])/2;let g=0;for(const [k,v] of Object.entries(d.gain)){const n=c.needs[k];if(v>0){const fill=Math.min(v*dur,100-n);g+=fill/100*(.25+urg(n)*2.2)*Chars.needW(c,k)}else g+=v*dur/400}
+   let tw=Chars.aiW(c,d.id);for(const [k,v] of Object.entries(Acts.AI_ALIAS))if(v===d.id)tw*=Chars.aiW(c,k);
+   const hobby=(d.gain.fun>0||d.skill)?.07*Math.pow(tw,1.6):0;
+   let w=(Math.max(.005,g)*Math.sqrt(tw)+hobby)*d.w;
    if(d.id==='sleep'){w*=sleepy>.5&&c.needs.energy<80?4.5:c.needs.energy<20?2:.06}
    if(d.id==='nap'){w*=sleepy>.5?.4:c.needs.energy<45?1.3:.4}
    if(d.night)w*=night?(d.night===2?3.2:2):.12;if(d.dusk)w*=dusk?3.5:.18;if(d.day)w*=night?.05:1;
    if(rainy&&!d.loc.includes('house')&&!['cafe','shop'].includes(d.id))w*=Chars.has(c,'timid')?.15:.35;
    if(rainy&&d.loc.includes('house'))w*=1.6;
    if(night&&!d.loc.includes('house')&&!d.night&&d.id!=='stargaze')w*=Chars.has(c,'scaredark')?.15:.5;
-   const here=d.loc.includes(c.loc);if(!here){const pace=Chars.sl(c,'pace');w*=.35+pace*.2+(Chars.has(c,'homebody')&&!d.loc.includes('home')&&!d.loc.includes('house')?-.2:0)+(Chars.has(c,'curious')?.12:0)}
+   const here=d.loc.includes(c.loc);if(!here){const pace=Chars.sl(c,'pace');w*=.5+pace*.25+(Chars.has(c,'homebody')&&!d.loc.includes('home')&&!d.loc.includes('house')?-.2:0)+(Chars.has(c,'curious')?.12:0)}
    if(c.health.sick)w*=['sleep','nap','rest','sofa','eat','cook'].includes(d.id)?3:.35;
    if(a.lastAct.includes(d.id))w*=.35;
    /* 地點記憶：去過開心的地方更想去 */
@@ -78,6 +81,16 @@ const Sim={agents:new Map(),acc:0,t:0,
    if(c.wishes.some(x=>x.k==='do'&&x.act===d.id))w*=2.2;
    w*=U.rnd(.7,1.3);cands.push({d,w})}
   cands.sort((x,y)=>y.w-x.w);const top=cands.slice(0,4);const pick=U.weighted(top.map(x=>({...x,w:x.w*x.w})));if(pick)this.start(a,pick.d)},
+ CASUAL:new Set(['stroll','daydream','rest','bench','observe','shade','fountain','campfire','picnic','sunbathe','drawsign','play','sofa']),
+ casual(a){const T=a.task;return !T||(T.phase==='do'&&this.CASUAL.has(T.def.id))||(T.phase==='go'&&this.CASUAL.has(T.def.id))},
+ /* 小意外與負面經歷：跌倒、惡夢、淋雨、掉東西（玩家可在設定關閉） */
+ mishap(a){if(OC.S.settings.negEvents===false||a.busy()||a.away)return;const c=a.c,vis=this.visible(a);const r=Math.random();
+  const sleeping=a.task&&a.task.def.pose==='sleep';
+  if(sleeping){if(r<.25){this.finish(a,false);a.face='wow';a.feel('!');if(vis)a.say(U.pick(['哇啊！…原來是夢…','好可怕的夢…']),{tone:'sad'});c.emo.sad=Math.min(1,c.emo.sad+.25);this.remember(c,'nightmare','做了惡夢',-.5);this.log(c,`${c.name}做了惡夢，嚇醒了。`,'moon');setTimeout(()=>a.face=null,1800)}return}
+  if(Env.rainy()&&c.loc!=='house'&&!a.inside&&r<.5){c.needs.hygiene=Math.max(0,c.needs.hygiene-18);c.needs.comfort=Math.max(0,c.needs.comfort-12);if(vis){a.say(U.pick(['淋得濕答答的…','哈啾！好冷…']),{tone:'sad'});a.feel('sweat');a.squash(.85)}this.remember(c,'rain','被雨淋濕',-.3);if(Math.random()<.25)this.getSick(a,'cold');return}
+  const clumsy=Chars.has(c,'clumsy')?3:1;if(r<.12*clumsy&&(a.pose==='walk'||a.pose==='run'||!a.task)){a.squash(.62);a.face='worry';a.feel('sweat');if(vis){OC.Fx.dust(a.x,a.z,6);a.say(U.pick(['哎唷！','痛痛痛…','又跌倒了…']),{tone:'sad'})}c.needs.comfort=Math.max(0,c.needs.comfort-10);this.remember(c,'trip','不小心跌倒了',-.3);
+   /* 會照顧人的朋友會過來關心 */const helper=[...this.agents.values()].find(o=>o!==a&&o.loc===a.loc&&!o.busy()&&Chars.soc(o.c,'comfort')>1.2&&Math.hypot(o.x-a.x,o.z-a.z)<8);if(helper&&OC.Social)setTimeout(()=>{if(!helper.busy()&&!a.busy())OC.Social.start(helper,a,'comfort')},1500);setTimeout(()=>a.face=null,1600);return}
+  if(r<.2&&c.mood==='content'&&Chars.has(c,'pessimist')){c.emo.sad=Math.min(1,c.emo.sad+.15);if(vis){a.say('唉…總覺得今天不太順。',{tone:'sad'});a.feel('gloom')}}},
  placeVal(c,loc){let s=0,n=0;for(const m of c.memories){if(m.loc===loc){s+=m.val;n++}}return n?U.clamp(s/n,-1,1):0},
  /* 開始行動：決定目的地（可能需要旅行到別的地點） */
  start(a,d,opt={}){const c=a.c;let loc=d.loc.includes(c.loc)?c.loc:opt.loc||U.pick(d.loc);
@@ -145,8 +158,8 @@ const Sim={agents:new Map(),acc:0,t:0,
    if(id){Items.add(id,1);const it=C.ITEM[id];this.log(c,`${c.name}在${C.LOC[c.loc].t}${d.t==='釣魚'?'釣到了':'找到了'}${it.em}${it.name}`,it.rare?'star':'leaf');
     if(this.visible(a)){a.say(it.rare?`哇！是${it.name}！`:`找到${it.name}了～`);a.feel(it.rare?'spark':'note');OC.Fx.sparkle(a.x,1.2,a.z,it.rare?10:5)}
     if(it.rare)this.remember(c,'find',`找到稀有的${it.name}`,.8,[],c.loc);OC.Quests&&OC.Quests.on('loot:'+it.cat,c)}}
-  if(d.id==='garden'){const G=OC.S.world.garden;const k=T.obj&&T.obj.plot;if(k!=null){const p=G[k]||(G[k]={g:0});p.g=Math.min(4,(p.g||0)+1);p.t=Date.now();if(p.g>=4&&Math.random()<.5){Items.add('flower',2);p.g=1;this.log(c,`${c.name}的花圃開花了，收成了野花`,'leaf')}OC.R.invalidate()}}
-  if(d.id==='cook'&&Math.random()<.25+c.skills.cooking/200){const f=U.pick(['onigiri','soup','bread','cookie']);Items.add(f,1);this.log(c,`${c.name}做了${C.ITEM[f].em}${C.ITEM[f].name}，放進了背包`,'heart')}
+  if(d.id==='garden'){const G=OC.S.world.garden;const k=T.obj&&T.obj.plot;if(k!=null){const p=G[k]||(G[k]={g:0});p.g=Math.min(4,(p.g||0)+1);p.t=Date.now();if(p.g>=4&&Math.random()<.35){Items.add('flower',1);p.g=1;this.log(c,`${c.name}的花圃開花了，收成了野花`,'leaf')}OC.R.invalidate()}}
+  if(d.id==='cook'&&Math.random()<.1+c.skills.cooking/400){const f=U.pick(['onigiri','soup','bread','cookie']);Items.add(f,1);this.log(c,`${c.name}做了${C.ITEM[f].em}${C.ITEM[f].name}，放進了背包`,'heart')}
   if(['stargaze','sunset'].includes(d.id)&&Math.random()<.5){const others=[...this.agents.values()].filter(o=>o!==a&&o.task&&o.task.def.id===d.id);this.remember(c,'view',d.id==='stargaze'?'看到滿天星星':'看了很美的夕陽',.6,others.map(o=>o.id),c.loc);for(const o of others){OC.Social&&OC.Social.bond(a,o,4,'一起'+d.t)}}
   if(Math.random()<.2)this.remember(c,'act',d.t,.25,[],c.loc)},
  /* ================= 旅行 ================= */
@@ -164,8 +177,8 @@ const Sim={agents:new Map(),acc:0,t:0,
   sp=Math.min(sp,dist*3+.3);let ang=Math.atan2(dz,dx);let ok=false,nx=a.x,nz=a.z;
   const tries=[0,.45,-.45,.9,-.9,1.35,-1.35,1.8,-1.8];if(a.avoid)tries.sort((p,q)=>Math.abs(p-a.avoid*.45)-Math.abs(q-a.avoid*.45));
   for(const off of tries){const an=ang+off;const px=a.x+Math.cos(an)*sp*dt,pz=a.z+Math.sin(an)*sp*dt;if(sc.ok(px,pz,a.task&&a.task.obj)||dist<.9&&sc.walk(px,pz)){nx=px;nz=pz;ok=true;if(off)a.avoid=Math.sign(off);break}}
-  /* 和其他角色保持距離 */
-  for(const o of this.agents.values()){if(o===a||o.loc!==a.loc||o.away)continue;const ex=nx-o.x,ez=nz-o.z,d2=ex*ex+ez*ez;if(d2<.28&&d2>1e-4){const d=Math.sqrt(d2);nx+=ex/d*(.53-d)*.25;nz+=ez/d*(.53-d)*.25}}
+  /* 和其他角色保持距離；絕交中的人會互相迴避 */
+  for(const o of this.agents.values()){if(o===a||o.loc!==a.loc||o.away)continue;const ex=nx-o.x,ez=nz-o.z,d2=ex*ex+ez*ez;if(OC.Social&&d2<5&&d2>1e-4&&OC.Social.rel(c.id,o.id).broken){const d=Math.sqrt(d2);nx+=ex/d*sp*dt*.6;nz+=ez/d*sp*dt*.6;continue}if(d2<.28&&d2>1e-4){const d=Math.sqrt(d2);nx+=ex/d*(.53-d)*.25;nz+=ez/d*(.53-d)*.25}}
   if(!ok||!sc.walk(nx,nz)){a.stuck+=dt;if(a.stuck>1.4){a.goal=null;a.stuck=0}return}
   a.stuck=Math.max(0,a.stuck-dt);const vx=(nx-a.x)/dt,vz=(nz-a.z)/dt;a.vx=U.approach(a.vx,vx,12,dt);a.vz=U.approach(a.vz,vz,12,dt);a.x=nx;a.z=nz;
   if(Math.abs(a.vx)>.08)a.facing=a.vx>0?1:-1;if(a.pose!=='walk'&&a.pose!=='run')a.pose=a.goal.fast?'run':'walk';
@@ -178,7 +191,7 @@ const Sim={agents:new Map(),acc:0,t:0,
    if(Math.random()<dt*.025&&this.visible(a)){const s=H.sick;if(s==='cold'){a.say(U.pick(C.LINES.sick.cold),{life:2});a.squash(.8);a.feel('sweat')}else{a.say(U.pick(C.LINES.sick[s]),{life:2.6,tone:'sad'});a.feel('sick',2)}}
    if(H.sick==='tired'&&a.task&&a.task.def.id==='sleep')H.until-=dt*1000*3;return}
   if(now<H.immune)return;const n=c.needs;let risk=0;
-  if(n.hygiene<20)risk+=.6;if(n.energy<12)risk+=.8;if(Env.rainy()&&c.loc!=='house'&&!a.inside)risk+=.35;if(n.hunger<8)risk+=.4;if(c.emo.sad>.7)risk+=.5;
+  let base=.03;risk+=base;if(n.hygiene<20)risk+=.6;if(n.energy<12)risk+=.8;if(Env.rainy()&&c.loc!=='house'&&!a.inside)risk+=.35;if(n.hunger<8)risk+=.4;if(c.emo.sad>.7)risk+=.5;
   if(!risk)return;if(Math.random()<risk*dt/1800){const k=n.energy<12?'tired':c.emo.sad>.7?'blue':n.hunger<8?'tummy':'cold';this.getSick(a,k)}},
  getSick(a,k){const c=a.c,S=C.SICK[k];if(c.health.sick||!S)return;if(!OC.S.settings.negEvents){return}
   c.health.sick=k;c.health.since=Date.now();c.health.until=Date.now()+S.dur*3600e3*U.rnd(.7,1.2);

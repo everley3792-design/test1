@@ -169,7 +169,7 @@ function ocSVG(c){
    if(kind==='ribbon')return `<g class="acc acc-ribbon"><path d="M59 87 L37 75 34 96 52 103Z" fill="${mix(a,'#C8A2C8',.35)}"/><path d="M73 87 L95 75 98 96 80 103Z" fill="${mix(a,'#C8A2C8',.42)}"/><circle cx="66" cy="90" r="8" fill="${trim}"/></g>`;
    if(kind==='crown')return `<g class="acc acc-crown"><path d="M93 66 L107 84 121 60 135 84 149 66 154 88 88 88Z" fill="#F2D287"/>${poly('95,69 106,84 121,62 136,84 147,69 147,83 95,83','#FFF1C2','opacity=".72"')}</g>`;
    if(kind==='pom')return `<g class="acc acc-pom"><path d="M61 93 Q91 59 134 62 Q163 64 188 86" stroke="${mix(a,'#B1AAC8',.36)}" stroke-width="12" stroke-linecap="round" fill="none"/><circle cx="52" cy="101" r="13" fill="#F7E4E7"/></g>`;
-   if(kind==='satchel')return `<g class="acc acc-satchel"><path d="M155 199 L181 193 184 222 157 225Z" fill="#B8957D"/>${poly('158,197 179,194 180,219 160,222','#D2B299','opacity=".8"')}<path d="M126 170 Q146 179 160 198" stroke="#A68873" stroke-width="4" fill="none" stroke-linecap="round"/></g></g>`;
+   if(kind==='satchel')return `<g class="acc acc-satchel"><path d="M155 199 L181 193 184 222 157 225Z" fill="#B8957D"/>${poly('158,197 179,194 180,219 160,222','#D2B299','opacity=".8"')}<path d="M126 170 Q146 179 160 198" stroke="#A68873" stroke-width="4" fill="none" stroke-linecap="round"/></g>`;
    return '';
   };
   const placed=catPlaceable(l)?`<g class="accessory-placed" transform="${catAccTransform(l)}">${generic()}</g>`:'';

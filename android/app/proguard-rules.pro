@@ -1,0 +1,1 @@
+-keepclassmembers class com.ocshimeji.app.OCBridge { @android.webkit.JavascriptInterface <methods>; }

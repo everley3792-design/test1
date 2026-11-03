@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 原創 Low-Poly 貓咪臉圖示 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#8FBF74" android:pathData="M18,86 Q54,70 90,86 L90,96 L18,96Z"/>
+    <path android:fillColor="#F6E9E9" android:pathData="M30,40 L36,22 L48,34Z"/>
+    <path android:fillColor="#F6E9E9" android:pathData="M78,40 L72,22 L60,34Z"/>
+    <path android:fillColor="#F2B8C6" android:pathData="M33,36 L37,27 L44,34Z"/>
+    <path android:fillColor="#F2B8C6" android:pathData="M75,36 L71,27 L64,34Z"/>
+    <path android:fillColor="#F6E9E9" android:pathData="M26,52 L32,36 L54,31 L76,36 L82,52 L78,70 L54,78 L30,70Z"/>
+    <path android:fillColor="#EADADB" android:pathData="M54,31 L76,36 L82,52 L78,70 L54,78Z"/>
+    <path android:fillColor="#5D4B66" android:pathData="M40,52 m-4,0 a4,5 0 1,0 8,0 a4,5 0 1,0 -8,0"/>
+    <path android:fillColor="#5D4B66" android:pathData="M68,52 m-4,0 a4,5 0 1,0 8,0 a4,5 0 1,0 -8,0"/>
+    <path android:fillColor="#F2A0B0" android:pathData="M34,61 m-5,0 a5,3 0 1,0 10,0 a5,3 0 1,0 -10,0"/>
+    <path android:fillColor="#F2A0B0" android:pathData="M74,61 m-5,0 a5,3 0 1,0 10,0 a5,3 0 1,0 -10,0"/>
+    <path android:strokeColor="#5D4B66" android:strokeWidth="2" android:strokeLineCap="round" android:pathData="M50,60 L54,63 L58,60"/>
+    <path android:fillColor="#B8A5DC" android:pathData="M74,24 L77,30 L84,31 L79,35 L80,42 L74,38 L68,42 L69,35 L64,31 L71,30Z"/>
+</vector>

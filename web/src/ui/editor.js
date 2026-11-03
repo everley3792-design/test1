@@ -86,7 +86,7 @@ const Editor={
   if(i>=0){OC.Rig.drop(S.chars[i]);Object.assign(S.chars[i],c);OC.Chars.ensure(S.chars[i])}else{OC.Chars.ensure(c);S.chars.push(c);if(!S.activeId)S.activeId=c.id}
   OC.Store.flush();U.emit('chars');this.stop();this.s.close();UI.toast(this.isNew?`${c.name}誕生了！`:'已儲存','check');
   if(OC.Pages.cur==='chars')OC.Pages.render();UI.hudChar();
-  if(this.isNew){if(this.after)this.after(c);else OC.Intro.arrive([c.id])}}};
+  if(this.isNew){if(this.after)this.after(c);else{OC.Pages.close();OC.Intro.arrive([c.id])}}}};
 function rgb2hsv([r,g,b]){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;if(d){if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;if(h<0)h+=360}return[h,mx?d/mx:0,mx]}
 function hsv2rgb(h,s,v){const f=n=>{const k=(n+h/60)%6;return Math.round(255*(v-v*s*Math.max(0,Math.min(k,4-k,1))))};return[f(5),f(3),f(1)]}
 function rgb2hex(a){return'#'+a.map(v=>v.toString(16).padStart(2,'0')).join('')}

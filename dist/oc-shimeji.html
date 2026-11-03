@@ -447,7 +447,7 @@ function ocSVG(c){
    if(kind==='ribbon')return `<g class="acc acc-ribbon"><path d="M59 87 L37 75 34 96 52 103Z" fill="${mix(a,'#C8A2C8',.35)}"/><path d="M73 87 L95 75 98 96 80 103Z" fill="${mix(a,'#C8A2C8',.42)}"/><circle cx="66" cy="90" r="8" fill="${trim}"/></g>`;
    if(kind==='crown')return `<g class="acc acc-crown"><path d="M93 66 L107 84 121 60 135 84 149 66 154 88 88 88Z" fill="#F2D287"/>${poly('95,69 106,84 121,62 136,84 147,69 147,83 95,83','#FFF1C2','opacity=".72"')}</g>`;
    if(kind==='pom')return `<g class="acc acc-pom"><path d="M61 93 Q91 59 134 62 Q163 64 188 86" stroke="${mix(a,'#B1AAC8',.36)}" stroke-width="12" stroke-linecap="round" fill="none"/><circle cx="52" cy="101" r="13" fill="#F7E4E7"/></g>`;
-   if(kind==='satchel')return `<g class="acc acc-satchel"><path d="M155 199 L181 193 184 222 157 225Z" fill="#B8957D"/>${poly('158,197 179,194 180,219 160,222','#D2B299','opacity=".8"')}<path d="M126 170 Q146 179 160 198" stroke="#A68873" stroke-width="4" fill="none" stroke-linecap="round"/></g></g>`;
+   if(kind==='satchel')return `<g class="acc acc-satchel"><path d="M155 199 L181 193 184 222 157 225Z" fill="#B8957D"/>${poly('158,197 179,194 180,219 160,222','#D2B299','opacity=".8"')}<path d="M126 170 Q146 179 160 198" stroke="#A68873" stroke-width="4" fill="none" stroke-linecap="round"/></g>`;
    return '';
   };
   const placed=catPlaceable(l)?`<g class="accessory-placed" transform="${catAccTransform(l)}">${generic()}</g>`:'';
@@ -1561,8 +1561,11 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   if(x>this.W+40||x+w<-40||y>this.H+40||y+h<-40)return;
   const sway=(o.type==='tree'||o.type==='tuft'||o.type==='flowers'||o.type==='bush')&&this.perf.ambient?Math.sin(t*(o.type==='tree'?.9:1.6)+o.x*.7+o.z*.3)*(o.type==='tree'?.018:.06)*(.6+Env.wind):0;
   const near=!flat&&y+h>this.H*.86&&h>this.H*.22&&o.type!=='house'&&o.type!=='shop';if(near)ctx.globalAlpha=.42;
-  if(sway){ctx.save();ctx.translate(q.x,q.y);ctx.transform(1,0,sway,1,0,0);ctx.drawImage(spr.cv,-w*spr.ax,-h*spr.ay,w,h);ctx.restore()}else ctx.drawImage(spr.cv,x,y,w,h);if(near)ctx.globalAlpha=1;
+  if(sway){ctx.save();ctx.translate(q.x,q.y);ctx.transform(1,0,sway,1,0,0);ctx.drawImage(spr.cv,-w*spr.ax,-h*spr.ay,w,h);ctx.restore()}else ctx.drawImage(spr.cv,x,y,w,h);ctx.globalAlpha=1;
   if(!flat&&(o.act||o.type==='house'))this.pick.push({o,x,y,w,h,d:q.d});
+  /* 花圃：依成長階段畫出嫩芽→花苞→開花 */
+  if(o.type==='plot'){const g=(OC.S.world.garden[o.plot]||{}).g||0;if(g>0){const cols=[['#F08FA5','#FFF'],['#FFD36E','#FFF'],['#B79CF0','#FFF'],['#F2A65A','#FFD36E']][o.plot%4];
+   for(let i=0;i<3;i++){const p2=this.cam.p(o.x-.42+i*.42,.08,o.z+.05);const sp=g>=3?SP.flowers(cols,o.plot+i):SP.tuft('#7FB65A',i);const k=(g>=3?.75:.45+g*.15)*p2.s;const ww=sp.cv.width/SP.PPM*k,hh=sp.cv.height/SP.PPM*k;ctx.drawImage(sp.cv,p2.x-ww*sp.ax,p2.y-hh*sp.ay,ww,hh)}}}
   /* 營火火焰、煙囪炊煙 */
   if(o.type==='campfire'&&this.fireOn(o)){const f=Math.sin(t*14)*.08+Math.sin(t*23)*.05;ctx.save();ctx.translate(q.x,q.y-s*.12);const fs=s*(.38+f*.2);
    const fl=(c,k,ox)=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(-fs*.32*k+ox,0);ctx.quadraticCurveTo(-fs*.3*k+ox,-fs*.6*k,ox+Math.sin(t*9)*fs*.06,-fs*1.15*k);ctx.quadraticCurveTo(fs*.3*k+ox,-fs*.6*k,fs*.32*k+ox,0);ctx.fill()};
@@ -1620,7 +1623,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
     else{p.x+=dt*(.03+p.s*.03)*(1+Env.wind);p.y+=dt*.02+Math.sin(t+i)*dt*.01;if(p.x>1.05){p.x=-.05;p.y=Math.random()*.7}const x=p.x*W,y=p.y*H;ctx.globalAlpha=.75;ctx.fillStyle=i%3?'#F7C6D3':'#FFFFFF';ctx.save();ctx.translate(x,y);ctx.rotate(t*2+i);ctx.beginPath();ctx.ellipse(0,0,3.2,1.6,0,0,TAU);ctx.fill();ctx.restore()}}
    ctx.globalAlpha=1}},
  /* ---------- 名字、對話泡泡、情緒符號（畫在色調之後，保持清晰） ---------- */
- drawOverlay(ctx){const showNames=OC.S.settings.names!==false;for(const a of this.actors){if(a.visible===false||!a.ss)continue;const s=a.ss,c=a.c;const top=a.sy-s*1.12*c.scale-(a.headOff||0);
+ drawOverlay(ctx){const showNames=OC.S.settings.names!==false;for(const a of this.actors){if(a.visible===false||!a.ss)continue;const s=a.ss,c=a.c;const top=a.sy-s*1.38*c.scale*(c.kind==='image'?1.05:1)-(a.headOff||0);
   if(a.emote)drawEmote(ctx,a,a.sx+s*.34,top+s*.12,s,this.t);
   if(a.bubble&&OC.S.settings.bubbles!==false)drawBubble(ctx,a.bubble,a.sx,top-4,this.t);
   else if(showNames&&(a.focus||a.nameT>0)){const al=a.focus?1:Math.min(1,a.nameT);ctx.globalAlpha=al*.92;const txt=c.name;ctx.font='600 11px "Nunito","Noto Sans TC",sans-serif';const w=ctx.measureText(txt).width+14;
@@ -1679,7 +1682,7 @@ const FACES={
  neutral:'.eye-o,.mouth-n',blink:'.eye-c,.mouth-n',joy:'.eye-h,.mouth-h',wow:'.eye-wow,.mouth-o',soft:'.eye-soft,.mouth-n',
  worry:'.eye-worry,.mouth-pout',angry:'.eye-tsun,.mouth-pout',sleep:'.eye-c,.mouth-n',talk:'.eye-o,.mouth-o',pout:'.eye-o,.mouth-pout',joyTalk:'.eye-h,.mouth-o'};
 const FACE_HIDE='.eye-o,.eye-c,.eye-h,.eye-extra,.mouth-n,.mouth-h,.mouth-o,.mouth-extra{display:none}';
-const svgNS=s=>s.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" width="'+240*RS+'" height="'+260*RS+'" ');
+const svgNS=s=>s.replace(/<svg([^>]*)>/,(m,a)=>'<svg'+(a.includes('xmlns=')?'':' xmlns="http://www.w3.org/2000/svg"')+a.replace(/\s(width|height)="[^"]*"/g,'')+' width="'+240*RS+'" height="'+260*RS+'">');
 const withStyle=(svg,css)=>svgNS(svg).replace(/(<svg[^>]*>)/,'$1<style>'+css+'</style>');
 function raster(svg){return new Promise(res=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>res(null);img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)})}
 /* 裁掉透明邊，降低記憶體 */
@@ -1695,11 +1698,13 @@ const Rig={RS,
   if(c.kind==='image'){const url=await OC.Store.Assets.get(c.img);const img=url&&await raster0(url);if(!img){entry.err=1;return}
    const cr=crop(img)||{cv:img,ox:0,oy:0};/* 匯入圖：底部對齊地面，高度 1.15m */
    entry.image={cv:cr.cv,w:cr.cv.width,h:cr.cv.height};entry.kind='image';entry.ready=true;U.emit('rig',c.id);return}
-  const svg=OC.ocSVG({look:c.look});
+  const svg0=OC.ocSVG({look:c.look});
   /* 量測各部位位置（tail 的支點） */
-  const host=document.createElement('div');host.style.cssText='position:fixed;left:-2000px;top:0;width:240px;height:260px;visibility:hidden;pointer-events:none';host.innerHTML=svg;document.body.appendChild(host);
+  const host=document.createElement('div');host.style.cssText='position:fixed;left:-2000px;top:0;width:240px;height:260px;visibility:hidden;pointer-events:none';host.innerHTML=svg0;document.body.appendChild(host);
   const sv=host.firstElementChild,sr=sv.getBoundingClientRect(),bb=sel=>{const n=sv.querySelector(sel);if(!n)return null;const r=n.getBoundingClientRect();return r.width?{x:r.left-sr.left,y:r.top-sr.top,w:r.width,h:r.height}:null};
-  const tb=bb('.tail-side'),fl=bb('.foot.fl'),fr=bb('.foot.fr'),hb=bb('.head-g');host.remove();
+  const tb=bb('.tail-side'),fl=bb('.foot.fl'),fr=bb('.foot.fr'),hb=bb('.head-g');
+  /* 經瀏覽器解析後重新序列化成合法 XML（舊版造型有少數未閉合標籤） */
+  let svg=svg0;try{svg=new XMLSerializer().serializeToString(sv)}catch(e){}host.remove();
   const L={},jobs=[];
   const add=(name,css)=>jobs.push(raster(withStyle(svg,css)).then(img=>{if(img){const r=crop(img);if(r)L[name]=r}}));
   add('tail','.head-g{display:none}.body-g>*:not(.tail-side){display:none}');
@@ -1894,7 +1899,8 @@ const Sim={agents:new Map(),acc:0,t:0,
  /* 4Hz：需求、情緒、決策、社交 */
  slow(dt){const H=dt/3600;for(const a of this.agents.values()){const c=a.c;this.decay(c,H,a);this.health(a,dt);this.moodOf(c);
    if(!a.busy()&&!a.task){a.dcd-=dt;if(a.dcd<=0){a.dcd=U.rnd(1.5,4)/(.6+Chars.sl(c,'pace')*.8);this.decide(a)}}
-   a.socT-=dt;if(a.socT<=0&&!a.busy()){a.socT=U.rnd(10,22)/(.5+Chars.sl(c,'social'));OC.Social&&OC.Social.maybe(a)}
+   a.socT-=dt;if(a.socT<=0&&!a.busy()){a.socT=U.rnd(30,70)/(.5+Chars.sl(c,'social'));if(Sim.casual(a))OC.Social&&OC.Social.maybe(a)}
+   a.evT=(a.evT||U.rnd(120,300))-dt;if(a.evT<=0){a.evT=U.rnd(180,420);Sim.mishap(a)}
    c.x=a.x;c.z=a.z}
   this.saveT=(this.saveT||0)+dt;if(this.saveT>8){this.saveT=0;OC.Store.save()}
   this.wishT=(this.wishT||0)+dt;if(this.wishT>45){this.wishT=0;for(const a of this.agents.values())this.wish(a)}
@@ -1918,16 +1924,18 @@ const Sim={agents:new Map(),acc:0,t:0,
   const sleepy=(night?1:0)+(h>=22||h<6?.6:0)-chrono*.25;
   const cands=[];
   for(const d of Acts.ACTS){if(d.loc.includes('house')&&d.loc.length===1&&!hasHouse)continue;
-   let g=0;for(const [k,v] of Object.entries(d.gain))g+=v*urg(c.needs[k])*Chars.needW(c,k);if(g<=0)g=.02;
-   let w=g*d.w*Chars.aiW(c,d.id);
-   for(const [k,v] of Object.entries(Acts.AI_ALIAS))if(v===d.id)w*=Chars.aiW(c,k);
+   /* 效用 = 實際能補足的需求（不超過缺口）× 急迫度 + 興趣嗜好（由特質決定） */
+   const dur=(d.dur[0]+d.dur[1])/2;let g=0;for(const [k,v] of Object.entries(d.gain)){const n=c.needs[k];if(v>0){const fill=Math.min(v*dur,100-n);g+=fill/100*(.25+urg(n)*2.2)*Chars.needW(c,k)}else g+=v*dur/400}
+   let tw=Chars.aiW(c,d.id);for(const [k,v] of Object.entries(Acts.AI_ALIAS))if(v===d.id)tw*=Chars.aiW(c,k);
+   const hobby=(d.gain.fun>0||d.skill)?.07*Math.pow(tw,1.6):0;
+   let w=(Math.max(.005,g)*Math.sqrt(tw)+hobby)*d.w;
    if(d.id==='sleep'){w*=sleepy>.5&&c.needs.energy<80?4.5:c.needs.energy<20?2:.06}
    if(d.id==='nap'){w*=sleepy>.5?.4:c.needs.energy<45?1.3:.4}
    if(d.night)w*=night?(d.night===2?3.2:2):.12;if(d.dusk)w*=dusk?3.5:.18;if(d.day)w*=night?.05:1;
    if(rainy&&!d.loc.includes('house')&&!['cafe','shop'].includes(d.id))w*=Chars.has(c,'timid')?.15:.35;
    if(rainy&&d.loc.includes('house'))w*=1.6;
    if(night&&!d.loc.includes('house')&&!d.night&&d.id!=='stargaze')w*=Chars.has(c,'scaredark')?.15:.5;
-   const here=d.loc.includes(c.loc);if(!here){const pace=Chars.sl(c,'pace');w*=.35+pace*.2+(Chars.has(c,'homebody')&&!d.loc.includes('home')&&!d.loc.includes('house')?-.2:0)+(Chars.has(c,'curious')?.12:0)}
+   const here=d.loc.includes(c.loc);if(!here){const pace=Chars.sl(c,'pace');w*=.5+pace*.25+(Chars.has(c,'homebody')&&!d.loc.includes('home')&&!d.loc.includes('house')?-.2:0)+(Chars.has(c,'curious')?.12:0)}
    if(c.health.sick)w*=['sleep','nap','rest','sofa','eat','cook'].includes(d.id)?3:.35;
    if(a.lastAct.includes(d.id))w*=.35;
    /* 地點記憶：去過開心的地方更想去 */
@@ -1936,6 +1944,16 @@ const Sim={agents:new Map(),acc:0,t:0,
    if(c.wishes.some(x=>x.k==='do'&&x.act===d.id))w*=2.2;
    w*=U.rnd(.7,1.3);cands.push({d,w})}
   cands.sort((x,y)=>y.w-x.w);const top=cands.slice(0,4);const pick=U.weighted(top.map(x=>({...x,w:x.w*x.w})));if(pick)this.start(a,pick.d)},
+ CASUAL:new Set(['stroll','daydream','rest','bench','observe','shade','fountain','campfire','picnic','sunbathe','drawsign','play','sofa']),
+ casual(a){const T=a.task;return !T||(T.phase==='do'&&this.CASUAL.has(T.def.id))||(T.phase==='go'&&this.CASUAL.has(T.def.id))},
+ /* 小意外與負面經歷：跌倒、惡夢、淋雨、掉東西（玩家可在設定關閉） */
+ mishap(a){if(OC.S.settings.negEvents===false||a.busy()||a.away)return;const c=a.c,vis=this.visible(a);const r=Math.random();
+  const sleeping=a.task&&a.task.def.pose==='sleep';
+  if(sleeping){if(r<.25){this.finish(a,false);a.face='wow';a.feel('!');if(vis)a.say(U.pick(['哇啊！…原來是夢…','好可怕的夢…']),{tone:'sad'});c.emo.sad=Math.min(1,c.emo.sad+.25);this.remember(c,'nightmare','做了惡夢',-.5);this.log(c,`${c.name}做了惡夢，嚇醒了。`,'moon');setTimeout(()=>a.face=null,1800)}return}
+  if(Env.rainy()&&c.loc!=='house'&&!a.inside&&r<.5){c.needs.hygiene=Math.max(0,c.needs.hygiene-18);c.needs.comfort=Math.max(0,c.needs.comfort-12);if(vis){a.say(U.pick(['淋得濕答答的…','哈啾！好冷…']),{tone:'sad'});a.feel('sweat');a.squash(.85)}this.remember(c,'rain','被雨淋濕',-.3);if(Math.random()<.25)this.getSick(a,'cold');return}
+  const clumsy=Chars.has(c,'clumsy')?3:1;if(r<.12*clumsy&&(a.pose==='walk'||a.pose==='run'||!a.task)){a.squash(.62);a.face='worry';a.feel('sweat');if(vis){OC.Fx.dust(a.x,a.z,6);a.say(U.pick(['哎唷！','痛痛痛…','又跌倒了…']),{tone:'sad'})}c.needs.comfort=Math.max(0,c.needs.comfort-10);this.remember(c,'trip','不小心跌倒了',-.3);
+   /* 會照顧人的朋友會過來關心 */const helper=[...this.agents.values()].find(o=>o!==a&&o.loc===a.loc&&!o.busy()&&Chars.soc(o.c,'comfort')>1.2&&Math.hypot(o.x-a.x,o.z-a.z)<8);if(helper&&OC.Social)setTimeout(()=>{if(!helper.busy()&&!a.busy())OC.Social.start(helper,a,'comfort')},1500);setTimeout(()=>a.face=null,1600);return}
+  if(r<.2&&c.mood==='content'&&Chars.has(c,'pessimist')){c.emo.sad=Math.min(1,c.emo.sad+.15);if(vis){a.say('唉…總覺得今天不太順。',{tone:'sad'});a.feel('gloom')}}},
  placeVal(c,loc){let s=0,n=0;for(const m of c.memories){if(m.loc===loc){s+=m.val;n++}}return n?U.clamp(s/n,-1,1):0},
  /* 開始行動：決定目的地（可能需要旅行到別的地點） */
  start(a,d,opt={}){const c=a.c;let loc=d.loc.includes(c.loc)?c.loc:opt.loc||U.pick(d.loc);
@@ -2003,8 +2021,8 @@ const Sim={agents:new Map(),acc:0,t:0,
    if(id){Items.add(id,1);const it=C.ITEM[id];this.log(c,`${c.name}在${C.LOC[c.loc].t}${d.t==='釣魚'?'釣到了':'找到了'}${it.em}${it.name}`,it.rare?'star':'leaf');
     if(this.visible(a)){a.say(it.rare?`哇！是${it.name}！`:`找到${it.name}了～`);a.feel(it.rare?'spark':'note');OC.Fx.sparkle(a.x,1.2,a.z,it.rare?10:5)}
     if(it.rare)this.remember(c,'find',`找到稀有的${it.name}`,.8,[],c.loc);OC.Quests&&OC.Quests.on('loot:'+it.cat,c)}}
-  if(d.id==='garden'){const G=OC.S.world.garden;const k=T.obj&&T.obj.plot;if(k!=null){const p=G[k]||(G[k]={g:0});p.g=Math.min(4,(p.g||0)+1);p.t=Date.now();if(p.g>=4&&Math.random()<.5){Items.add('flower',2);p.g=1;this.log(c,`${c.name}的花圃開花了，收成了野花`,'leaf')}OC.R.invalidate()}}
-  if(d.id==='cook'&&Math.random()<.25+c.skills.cooking/200){const f=U.pick(['onigiri','soup','bread','cookie']);Items.add(f,1);this.log(c,`${c.name}做了${C.ITEM[f].em}${C.ITEM[f].name}，放進了背包`,'heart')}
+  if(d.id==='garden'){const G=OC.S.world.garden;const k=T.obj&&T.obj.plot;if(k!=null){const p=G[k]||(G[k]={g:0});p.g=Math.min(4,(p.g||0)+1);p.t=Date.now();if(p.g>=4&&Math.random()<.35){Items.add('flower',1);p.g=1;this.log(c,`${c.name}的花圃開花了，收成了野花`,'leaf')}OC.R.invalidate()}}
+  if(d.id==='cook'&&Math.random()<.1+c.skills.cooking/400){const f=U.pick(['onigiri','soup','bread','cookie']);Items.add(f,1);this.log(c,`${c.name}做了${C.ITEM[f].em}${C.ITEM[f].name}，放進了背包`,'heart')}
   if(['stargaze','sunset'].includes(d.id)&&Math.random()<.5){const others=[...this.agents.values()].filter(o=>o!==a&&o.task&&o.task.def.id===d.id);this.remember(c,'view',d.id==='stargaze'?'看到滿天星星':'看了很美的夕陽',.6,others.map(o=>o.id),c.loc);for(const o of others){OC.Social&&OC.Social.bond(a,o,4,'一起'+d.t)}}
   if(Math.random()<.2)this.remember(c,'act',d.t,.25,[],c.loc)},
  /* ================= 旅行 ================= */
@@ -2022,8 +2040,8 @@ const Sim={agents:new Map(),acc:0,t:0,
   sp=Math.min(sp,dist*3+.3);let ang=Math.atan2(dz,dx);let ok=false,nx=a.x,nz=a.z;
   const tries=[0,.45,-.45,.9,-.9,1.35,-1.35,1.8,-1.8];if(a.avoid)tries.sort((p,q)=>Math.abs(p-a.avoid*.45)-Math.abs(q-a.avoid*.45));
   for(const off of tries){const an=ang+off;const px=a.x+Math.cos(an)*sp*dt,pz=a.z+Math.sin(an)*sp*dt;if(sc.ok(px,pz,a.task&&a.task.obj)||dist<.9&&sc.walk(px,pz)){nx=px;nz=pz;ok=true;if(off)a.avoid=Math.sign(off);break}}
-  /* 和其他角色保持距離 */
-  for(const o of this.agents.values()){if(o===a||o.loc!==a.loc||o.away)continue;const ex=nx-o.x,ez=nz-o.z,d2=ex*ex+ez*ez;if(d2<.28&&d2>1e-4){const d=Math.sqrt(d2);nx+=ex/d*(.53-d)*.25;nz+=ez/d*(.53-d)*.25}}
+  /* 和其他角色保持距離；絕交中的人會互相迴避 */
+  for(const o of this.agents.values()){if(o===a||o.loc!==a.loc||o.away)continue;const ex=nx-o.x,ez=nz-o.z,d2=ex*ex+ez*ez;if(OC.Social&&d2<5&&d2>1e-4&&OC.Social.rel(c.id,o.id).broken){const d=Math.sqrt(d2);nx+=ex/d*sp*dt*.6;nz+=ez/d*sp*dt*.6;continue}if(d2<.28&&d2>1e-4){const d=Math.sqrt(d2);nx+=ex/d*(.53-d)*.25;nz+=ez/d*(.53-d)*.25}}
   if(!ok||!sc.walk(nx,nz)){a.stuck+=dt;if(a.stuck>1.4){a.goal=null;a.stuck=0}return}
   a.stuck=Math.max(0,a.stuck-dt);const vx=(nx-a.x)/dt,vz=(nz-a.z)/dt;a.vx=U.approach(a.vx,vx,12,dt);a.vz=U.approach(a.vz,vz,12,dt);a.x=nx;a.z=nz;
   if(Math.abs(a.vx)>.08)a.facing=a.vx>0?1:-1;if(a.pose!=='walk'&&a.pose!=='run')a.pose=a.goal.fast?'run':'walk';
@@ -2036,7 +2054,7 @@ const Sim={agents:new Map(),acc:0,t:0,
    if(Math.random()<dt*.025&&this.visible(a)){const s=H.sick;if(s==='cold'){a.say(U.pick(C.LINES.sick.cold),{life:2});a.squash(.8);a.feel('sweat')}else{a.say(U.pick(C.LINES.sick[s]),{life:2.6,tone:'sad'});a.feel('sick',2)}}
    if(H.sick==='tired'&&a.task&&a.task.def.id==='sleep')H.until-=dt*1000*3;return}
   if(now<H.immune)return;const n=c.needs;let risk=0;
-  if(n.hygiene<20)risk+=.6;if(n.energy<12)risk+=.8;if(Env.rainy()&&c.loc!=='house'&&!a.inside)risk+=.35;if(n.hunger<8)risk+=.4;if(c.emo.sad>.7)risk+=.5;
+  let base=.03;risk+=base;if(n.hygiene<20)risk+=.6;if(n.energy<12)risk+=.8;if(Env.rainy()&&c.loc!=='house'&&!a.inside)risk+=.35;if(n.hunger<8)risk+=.4;if(c.emo.sad>.7)risk+=.5;
   if(!risk)return;if(Math.random()<risk*dt/1800){const k=n.energy<12?'tired':c.emo.sad>.7?'blue':n.hunger<8?'tummy':'cold';this.getSick(a,k)}},
  getSick(a,k){const c=a.c,S=C.SICK[k];if(c.health.sick||!S)return;if(!OC.S.settings.negEvents){return}
   c.health.sick=k;c.health.since=Date.now();c.health.until=Date.now()+S.dur*3600e3*U.rnd(.7,1.2);
@@ -2100,7 +2118,7 @@ const Social={LBL,
  rel(a,b){const k=key(a,b);let r=OC.S.rel[k];if(!r){r=OC.S.rel[k]={f:0,r:0,trust:20,conf:0,fam:0,mem:[],last:0,broken:false,lovers:false,tag:null,noRomance:false,greet:''}}return r},
  status(r){if(r.broken)return'broken';if(r.lovers)return'lovers';if(r.tag)return r.tag;if(r.f<=-30)return'bad';if(r.f>=70)return'best';if(r.f>=40)return'good';if(r.f>=15)return'friend';return r.fam>=3?'acq':'stranger'},
  label(r){return LBL[this.status(r)]},
- change(a,b,df,o={}){const r=this.rel(a.c?a.c.id:a,b.c?b.c.id:b);const before=this.status(r);r.f=U.clamp(r.f+df,-100,100);if(o.conf)r.conf=U.clamp(r.conf+o.conf,0,100);if(o.trust)r.trust=U.clamp(r.trust+o.trust,0,100);if(o.r)r.r=U.clamp(r.r+o.r,0,100);r.fam++;r.last=Date.now();
+ change(a,b,df,o={}){const r=this.rel(a.c?a.c.id:a,b.c?b.c.id:b);const before=this.status(r);if(df>0)df*=U.clamp(1-Math.max(0,r.f)/125,.12,1)*.55;r.f=U.clamp(r.f+df,-100,100);if(o.conf)r.conf=U.clamp(r.conf+o.conf,0,100);if(o.trust)r.trust=U.clamp(r.trust+o.trust,0,100);if(o.r)r.r=U.clamp(r.r+o.r,0,100);r.fam++;r.last=Date.now();
   const after=this.status(r);if(after!==before&&!['acq','stranger'].includes(after)){const A=nameOf(a),B=nameOf(b);if(['friend','good','best'].includes(after)&&rank(after)>rank(before)){OC.Sim.log(null,`${A}和${B}的關係變成了「${LBL[after]}」！`,'heart');OC.UI&&OC.UI.toast(`${A} ♥ ${B}：${LBL[after]}`,'heart');addMem(r,`成為${LBL[after]}`,.8)}else if(after==='bad'){OC.Sim.log(null,`${A}和${B}的關係變差了…`,'cloud')}}
   U.emit('rel');return r},
  bond(a,b,n,why){const r=this.change(a,b,n,{trust:n*.5});if(why)addMem(r,why,.5)},
@@ -2108,7 +2126,7 @@ const Social={LBL,
 
  /* ============ 是否要找人互動 ============ */
  maybe(a){if(OC.S.settings.autoSocial===false)return;const c=a.c;if(a.task&&(a.task.def.ex||a.task.def.pose==='sleep'))return;if(a.inside||a.away)return;
-  const near=[...OC.Sim.agents.values()].filter(o=>o!==a&&o.loc===a.loc&&!o.away&&!o.busy()&&!(o.task&&o.task.def.pose==='sleep')&&Math.hypot(o.x-a.x,o.z-a.z)<(a.loc==='house'?9:7.5));
+  const near=[...OC.Sim.agents.values()].filter(o=>o!==a&&o.loc===a.loc&&!o.away&&!o.busy()&&OC.Sim.casual(o)&&!(o.task&&o.task.def.pose==='sleep')&&!((a.avoid_||{})[o.id]>Date.now())&&Math.hypot(o.x-a.x,o.z-a.z)<(a.loc==='house'?9:7.5));
   if(!near.length)return;
   const want=(1-c.needs.social/100)*.75+Chars.sl(c,'social')*.35+(Chars.has(c,'chatty')?.2:0)-(Chars.has(c,'loner')?.25:0)+(c.emo.anger>.4?.25:0);
   if(Math.random()>want)return;
@@ -2126,7 +2144,7 @@ const Social={LBL,
   add('comfort',(d.health.sick||d.mood==='sad'||d.emo.sad>.4)?2.2*Chars.soc(c,'comfort'):0);
   add('gift',r.f>25&&Math.random()<.3?.5:0);
   add('apology',r.conf>35?1.6*Chars.soc(c,'forgive'):0);
-  if(neg){const base=.06*Chars.soc(c,'argue')*grumpy(c)*(r.f<0?2.2:r.f>60?.4:1)*(r.conf>30?1.8:1)*(Chars.has(c,'jealous')&&d.bond>c.bond+20?2:1);add('argue',base);add('tease',Chars.has(c,'prank')||Chars.has(c,'sharp')?.4:0)}
+  if(neg){const base=.1*Chars.soc(c,'argue')*grumpy(c)*(r.f<0?2.2:r.f>60?.4:1)*(r.conf>30?1.8:1)*(Chars.has(c,'jealous')&&d.bond>c.bond+20?2:1);add('argue',base);add('tease',Chars.has(c,'prank')||Chars.has(c,'sharp')?.4:0)}
   if(OC.S.settings.romance!==false&&!r.noRomance&&!r.lovers&&r.f>55&&!c.noRomance&&!d.noRomance)add('flirt',.25*(Chars.has(c,'romantic')?2.5:1));
   if(r.lovers)add('date',.9);
   return(U.weighted(W)||{k:'chat'}).k},
@@ -2155,7 +2173,8 @@ const Social={LBL,
    case'greet':{const g={wave:'揮揮手',bow:'鞠躬',hop:'跳起來',hug:'抱抱',nod:'點點頭',peek:'偷看'}[c.quirks.greet];r.greet=U.dayKey();
     act(()=>{if(c.quirks.greet==='hop')a.hop(2);else if(c.quirks.greet==='bow')a.squash(.85);else if(c.quirks.greet==='hug'){a.feel('heart')}else if(c.quirks.greet==='peek'){a.face='soft'}},.3);
     say(a,U.pick(L.greet)+(Chars.has(c,'polite')?' 今天也請多指教。':''));say(b,Chars.has(d,'shy')?'啊…你、你好。':U.pick(L.greet),{emo:Chars.has(d,'shy')?'blush':null});gain(2);break}
-   case'chat':{const t=pickTopic();say(a,t);const agree=Math.random()<.5+Chars.sl(d,'friendly')*.4;say(b,agree?U.pick(['對啊對啊！','真的耶～','我也這麼覺得。','嗯嗯！']):U.pick(['是嗎？','我倒是覺得還好。','嗯…']),{emo:agree?'note':null});
+   case'chat':{if(OC.S.settings.negEvents!==false&&(Chars.has(d,'sensitive')||Chars.has(d,'moody')||Chars.has(d,'tsun'))&&Math.random()<.07){say(a,pickTopic());say(b,'……你是在說我嗎？',{tone:'angry',emo:'anger'});act(()=>{b.face='angry';d.emo.anger=Math.min(1,d.emo.anger+.3);this.change(a,b,-3,{conf:10});OC.Sim.remember(d,'misunderstand',`誤會了${c.name}的話`,-.3,[c.id])},.3);say(a,'欸？我不是那個意思啦…',{emo:'sweat'});break}
+    const t=pickTopic();say(a,t);const agree=Math.random()<.5+Chars.sl(d,'friendly')*.4;say(b,agree?U.pick(['對啊對啊！','真的耶～','我也這麼覺得。','嗯嗯！']):U.pick(['是嗎？','我倒是覺得還好。','嗯…']),{emo:agree?'note':null});
     if(Math.random()<.5)say(a,U.pick(['嘿嘿。','下次一起去吧！','跟你聊天好開心。']));gain(agree?4:2);break}
    case'joke':{say(a,U.pick(L.joke));const laugh=!Chars.has(d,'serious')&&!Chars.has(d,'quiet')&&Math.random()<.75;act(()=>{if(laugh){b.face='joy';b.pose='cheer';b.hop(1.4);d.needs.fun=Math.min(100,d.needs.fun+15)}else b.face='pout'},.4);
     say(b,laugh?U.pick(['哈哈哈！','噗——你好好笑！','笑到肚子痛了～']):U.pick(['……這好笑嗎？','冷笑話警報。']),{emo:laugh?'note':'sweat'});gain(laugh?5:-1);break}
@@ -2190,6 +2209,7 @@ const Social={LBL,
     const r=this.change(a,b,-U.rnd(14,22),{conf:35,trust:-12});OC.Sim.remember(c,'fight',`和${d.name}大吵一架`,-.9,[d.id]);OC.Sim.remember(d,'fight',`和${c.name}大吵一架`,-.9,[c.id]);OC.Sim.log(null,`${c.name}和${d.name}大吵了一架！`,'anger');OC.UI&&OC.UI.toast(`${c.name}和${d.name}吵架了…`,'anger');
     if(Chars.soc(c,'hurt')>1.2&&Math.random()<.35)OC.Sim.getSick(a,'blue');if(Chars.soc(d,'hurt')>1.2&&Math.random()<.35)OC.Sim.getSick(b,'blue');
     if(r.f<-40&&r.conf>60&&!r.broken&&!OC.S.pending.some(p=>p.k==='breakup'&&((p.a===c.id&&p.b===d.id)||(p.a===d.id&&p.b===c.id)))){OC.S.pending.push({id:U.uid('p'),k:'breakup',a:c.id,b:d.id,t:Date.now()});U.emit('pending')}
+    for(const [x,y] of [[a,b],[b,a]]){x.avoid_=x.avoid_||{};x.avoid_[y.id]=Date.now()+8*60e3}
     /* 生氣地走開 */
     const sc=OC.Scenes.get(a.loc);for(const [x,y] of [[a,b],[b,a]]){const p=sc.near(x.x+(x.x>y.x?4:-4),x.z,2);x.goal={x:p.x,z:p.z}}},.4)}
   else{act(()=>{this.change(a,b,-U.rnd(5,9),{conf:16});c.emo.anger=Math.min(1,c.emo.anger+.35);d.emo.anger=Math.min(1,d.emo.anger+.35);OC.Sim.remember(c,'argue',`和${d.name}拌嘴`,-.4,[d.id]);OC.Sim.remember(d,'argue',`和${c.name}拌嘴`,-.4,[c.id]);OC.Sim.log(null,`${c.name}和${d.name}拌了幾句嘴。`,'cloud')},.3);say(a,'哼！',{tone:'angry'})}},
@@ -2269,7 +2289,11 @@ const Play={
   /* 太多了：怕癢、高冷的夥伴會想逃 */
   if(P.strokes>24&&Chars.sl(c,'indep')>.7&&Math.random()<.2){a.say('好了啦，夠了夠了。');this.petEnd(a);a.hop(1.4)}},
  petEnd(a){const P=a.petting;if(!P)return;a.petting=null;a.petY=0;if(!(a.task&&a.task.def.pose==='sleep'))a.pose='stand';
-  if(P.strokes>=4)U.emit('tut','pet');if(P.strokes>=6){this.happy(a);OC.Sim.checkWish(a,'pet');OC.Sim.remember(a.c,'pet','被你摸摸頭',.5);OC.Sim.log(a.c,`你摸了摸${a.c.name}的頭`,'hand')}
+  if(P.strokes>=4)U.emit('tut','pet');
+  /* 吃醋：愛吃醋的夥伴看到你只摸別人會不開心 */
+  if(P.strokes>=8&&OC.S.settings.negEvents!==false)for(const o of OC.Sim.agents.values()){if(o===a||o.loc!==a.loc||o.busy()||!Chars.has(o.c,'jealous')&&!Chars.has(o.c,'clingy'))continue;if(Math.hypot(o.x-a.x,o.z-a.z)>8||Math.random()>.6)continue;
+   setTimeout(()=>{o.face='pout';o.feel('gloom');o.say(Chars.has(o.c,'jealous')?'…為什麼只摸牠。':'我、我也想被摸摸…',{tone:'sad'});o.c.emo.sad=Math.min(1,o.c.emo.sad+.2);if(Chars.has(o.c,'jealous')){const r=OC.Social.rel(o.id,a.id);r.conf=Math.min(100,r.conf+10)}o.c.wishes.push({k:'pet',t:Date.now(),id:U.uid('w')});setTimeout(()=>o.face=null,2200)},900);break}
+  if(P.strokes>=6){this.happy(a);OC.Sim.checkWish(a,'pet');OC.Sim.remember(a.c,'pet','被你摸摸頭',.5);OC.Sim.log(a.c,`你摸了摸${a.c.name}的頭`,'hand')}
   OC.Store.save()},
  /* 開心反應（小怪癖） */
  happy(a){const q=a.c.quirks.happy;a.face='joy';setTimeout(()=>{if(a.face==='joy')a.face=null},1600);
@@ -2742,7 +2766,7 @@ const Editor={
   if(i>=0){OC.Rig.drop(S.chars[i]);Object.assign(S.chars[i],c);OC.Chars.ensure(S.chars[i])}else{OC.Chars.ensure(c);S.chars.push(c);if(!S.activeId)S.activeId=c.id}
   OC.Store.flush();U.emit('chars');this.stop();this.s.close();UI.toast(this.isNew?`${c.name}誕生了！`:'已儲存','check');
   if(OC.Pages.cur==='chars')OC.Pages.render();UI.hudChar();
-  if(this.isNew){if(this.after)this.after(c);else OC.Intro.arrive([c.id])}}};
+  if(this.isNew){if(this.after)this.after(c);else{OC.Pages.close();OC.Intro.arrive([c.id])}}}};
 function rgb2hsv([r,g,b]){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;let h=0;if(d){if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;if(h<0)h+=360}return[h,mx?d/mx:0,mx]}
 function hsv2rgb(h,s,v){const f=n=>{const k=(n+h/60)%6;return Math.round(255*(v-v*s*Math.max(0,Math.min(k,4-k,1))))};return[f(5),f(3),f(1)]}
 function rgb2hex(a){return'#'+a.map(v=>v.toString(16).padStart(2,'0')).join('')}
@@ -2790,7 +2814,7 @@ const Intro={
  /* ---------- 3. 選房子 ---------- */
  house(again){const el=this.el();el.hidden=false;el.className='intro on';OC.UI.blockWorld=true;$('#hud').classList.add('hide');$('#nav').classList.add('hide');
   el.innerHTML=`<div class="in-card"><h2>${again?'換一棟房子':'選一棟你們的家'}</h2><p class="lead">房子會放在家園小島上，裡面已經有床、餐桌、小廚房、書櫃和沙發。</p><div class="houses">${C.HOUSES.map((h,i)=>`<button class="hs ${i===0?'on':''}" data-h="${h.id}"><canvas width="220" height="200" data-hc="${h.id}"></canvas><b>${esc(h.t)}</b><small>${esc(h.d)}</small></button>`).join('')}</div>
-   <button class="btn primary big" data-place>放到小島上</button>${again?'<button class="link" data-cancel>取消</button>':''}</div>`;
+   <button class="btn primary big" data-place>放到小島上</button>${again?'<button class="link" data-cancel>取消</button>':OC.S.flags.started?'<button class="link" data-cancel>稍後再選</button>':''}</div>`;
   this.style=C.HOUSES[0].id;
   el.querySelectorAll('[data-hc]').forEach(cv=>{const s=OC.Sprites.house(cv.dataset.hc);const g=cv.getContext('2d');const k=Math.min(cv.width/s.cv.width,cv.height/s.cv.height);g.drawImage(s.cv,(cv.width-s.cv.width*k)/2,(cv.height-s.cv.height*k),s.cv.width*k,s.cv.height*k)});
   el.onclick=e=>{const b=e.target.closest('button');if(!b)return;U.buzz(6);if(b.dataset.h){this.style=b.dataset.h;el.querySelectorAll('[data-h]').forEach(x=>U.toggle(x,'on',x===b))}else if(b.hasAttribute('data-place'))this.place();else if(b.hasAttribute('data-cancel'))this.finishIntro()}},
@@ -2860,12 +2884,12 @@ OC.Intro=Intro;OC.Tutorial=Tutorial;
 /* OC Shimeji v4 · 主迴圈、輸入、相機跟隨、啟動流程 */
 (function(OC){'use strict';
 const {U,R,Env,Sim}=OC;
-const Loop={raf:0,last:0,acc:0,paused:false,renderOn:true,fpsN:0,fpsT:0,fps:0,
+const Loop={timeScale:1,raf:0,last:0,acc:0,paused:false,renderOn:true,fpsN:0,fpsT:0,fps:0,
  start(){if(this.raf)return;this.last=performance.now();this.raf=requestAnimationFrame(t=>this.frame(t))},
  stop(){cancelAnimationFrame(this.raf);this.raf=0},
  frame(t){this.raf=requestAnimationFrame(n=>this.frame(n));const perf=OC.Store.perf();const minDt=1000/perf.fps-1.5;const el=t-this.last;if(el<minDt)return;
   const dt=Math.min(.1,el/1000);this.last=t;this.fpsN++;this.fpsT+=el;if(this.fpsT>1000){this.fps=Math.round(this.fpsN*1000/this.fpsT);this.fpsN=0;this.fpsT=0}
-  Env.update();Sim.tick(dt);OC.Social.tick(dt);Cam.update(dt);
+  Env.update();/* 模擬以固定小步長前進，避免卡頓時角色穿過障礙物 */let sdt=dt*(this.timeScale||1);while(sdt>1e-4){const st=Math.min(.05,sdt);sdt-=st;Sim.tick(st);OC.Social.tick(st)}Cam.update(dt);
   if(this.renderOn){try{R.frame(dt)}catch(e){console.error('[render]',e);this.err=(this.err||0)+1}}
   OC.UI&&OC.UI.frame&&OC.UI.frame(dt)}};
 
@@ -2911,7 +2935,7 @@ const Input={ptrs:new Map(),drag:null,pinch:null,press:null,
   const D=this.drag;if(D){this.drag=null;if(D.moved<6&&!cancel&&performance.now()-D.t<500){const o=this.hitObj(p.x,p.y);if(o)OC.UI&&OC.UI.objTap(o);else{const now=performance.now();if(this.lastTap&&now-this.lastTap<330){const w=R.cam.unproject(p.x,p.y);const a=Sim.active();if(a&&a.loc===R.sc.id)OC.Play.call(a,w.x,w.z)}this.lastTap=now}}}}};
 
 /* ---------- 地點切換（含柔和轉場） ---------- */
-const World={go(id,{instant,focus}={}){const C=OC.Content;if(!C.LOC[id])return;OC.S.world.loc=id;
+const World={go(id,{instant,focus}={}){const C=OC.Content;if(!C.LOC[id])return;OC.S.world.loc=id;if(OC.Pages&&OC.Pages.cur)OC.Pages.close();
   const doIt=()=>{R.setScene(id);Sim.refreshActors();const sc=R.sc;const a=focus||[...R.actors].find(x=>x.id===OC.S.activeId)||R.actors[0];Cam.focus=a||null;Cam.follow=!!a;
    if(a&&sc.kind!=='room')Cam.set(a.x,a.z+.5,sc.cam.D,true);else Cam.set(sc.cam.tx,sc.cam.tz,sc.kind==='room'?sc.cam.D:19,true);OC.Quests.on('loc:'+id);U.emit('scene',id);U.emit('tut',id==='house'?'house':'map');OC.Store.save()};
   if(instant||!OC.UI){doIt();return}OC.UI.fade(doIt)}};

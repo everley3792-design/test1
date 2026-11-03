@@ -198,8 +198,11 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   if(x>this.W+40||x+w<-40||y>this.H+40||y+h<-40)return;
   const sway=(o.type==='tree'||o.type==='tuft'||o.type==='flowers'||o.type==='bush')&&this.perf.ambient?Math.sin(t*(o.type==='tree'?.9:1.6)+o.x*.7+o.z*.3)*(o.type==='tree'?.018:.06)*(.6+Env.wind):0;
   const near=!flat&&y+h>this.H*.86&&h>this.H*.22&&o.type!=='house'&&o.type!=='shop';if(near)ctx.globalAlpha=.42;
-  if(sway){ctx.save();ctx.translate(q.x,q.y);ctx.transform(1,0,sway,1,0,0);ctx.drawImage(spr.cv,-w*spr.ax,-h*spr.ay,w,h);ctx.restore()}else ctx.drawImage(spr.cv,x,y,w,h);if(near)ctx.globalAlpha=1;
+  if(sway){ctx.save();ctx.translate(q.x,q.y);ctx.transform(1,0,sway,1,0,0);ctx.drawImage(spr.cv,-w*spr.ax,-h*spr.ay,w,h);ctx.restore()}else ctx.drawImage(spr.cv,x,y,w,h);ctx.globalAlpha=1;
   if(!flat&&(o.act||o.type==='house'))this.pick.push({o,x,y,w,h,d:q.d});
+  /* 花圃：依成長階段畫出嫩芽→花苞→開花 */
+  if(o.type==='plot'){const g=(OC.S.world.garden[o.plot]||{}).g||0;if(g>0){const cols=[['#F08FA5','#FFF'],['#FFD36E','#FFF'],['#B79CF0','#FFF'],['#F2A65A','#FFD36E']][o.plot%4];
+   for(let i=0;i<3;i++){const p2=this.cam.p(o.x-.42+i*.42,.08,o.z+.05);const sp=g>=3?SP.flowers(cols,o.plot+i):SP.tuft('#7FB65A',i);const k=(g>=3?.75:.45+g*.15)*p2.s;const ww=sp.cv.width/SP.PPM*k,hh=sp.cv.height/SP.PPM*k;ctx.drawImage(sp.cv,p2.x-ww*sp.ax,p2.y-hh*sp.ay,ww,hh)}}}
   /* 營火火焰、煙囪炊煙 */
   if(o.type==='campfire'&&this.fireOn(o)){const f=Math.sin(t*14)*.08+Math.sin(t*23)*.05;ctx.save();ctx.translate(q.x,q.y-s*.12);const fs=s*(.38+f*.2);
    const fl=(c,k,ox)=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(-fs*.32*k+ox,0);ctx.quadraticCurveTo(-fs*.3*k+ox,-fs*.6*k,ox+Math.sin(t*9)*fs*.06,-fs*1.15*k);ctx.quadraticCurveTo(fs*.3*k+ox,-fs*.6*k,fs*.32*k+ox,0);ctx.fill()};
@@ -257,7 +260,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
     else{p.x+=dt*(.03+p.s*.03)*(1+Env.wind);p.y+=dt*.02+Math.sin(t+i)*dt*.01;if(p.x>1.05){p.x=-.05;p.y=Math.random()*.7}const x=p.x*W,y=p.y*H;ctx.globalAlpha=.75;ctx.fillStyle=i%3?'#F7C6D3':'#FFFFFF';ctx.save();ctx.translate(x,y);ctx.rotate(t*2+i);ctx.beginPath();ctx.ellipse(0,0,3.2,1.6,0,0,TAU);ctx.fill();ctx.restore()}}
    ctx.globalAlpha=1}},
  /* ---------- 名字、對話泡泡、情緒符號（畫在色調之後，保持清晰） ---------- */
- drawOverlay(ctx){const showNames=OC.S.settings.names!==false;for(const a of this.actors){if(a.visible===false||!a.ss)continue;const s=a.ss,c=a.c;const top=a.sy-s*1.12*c.scale-(a.headOff||0);
+ drawOverlay(ctx){const showNames=OC.S.settings.names!==false;for(const a of this.actors){if(a.visible===false||!a.ss)continue;const s=a.ss,c=a.c;const top=a.sy-s*1.38*c.scale*(c.kind==='image'?1.05:1)-(a.headOff||0);
   if(a.emote)drawEmote(ctx,a,a.sx+s*.34,top+s*.12,s,this.t);
   if(a.bubble&&OC.S.settings.bubbles!==false)drawBubble(ctx,a.bubble,a.sx,top-4,this.t);
   else if(showNames&&(a.focus||a.nameT>0)){const al=a.focus?1:Math.min(1,a.nameT);ctx.globalAlpha=al*.92;const txt=c.name;ctx.font='600 11px "Nunito","Noto Sans TC",sans-serif';const w=ctx.measureText(txt).width+14;

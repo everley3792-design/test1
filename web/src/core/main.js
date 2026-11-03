@@ -1,12 +1,12 @@
 /* OC Shimeji v4 · 主迴圈、輸入、相機跟隨、啟動流程 */
 (function(OC){'use strict';
 const {U,R,Env,Sim}=OC;
-const Loop={raf:0,last:0,acc:0,paused:false,renderOn:true,fpsN:0,fpsT:0,fps:0,
+const Loop={timeScale:1,raf:0,last:0,acc:0,paused:false,renderOn:true,fpsN:0,fpsT:0,fps:0,
  start(){if(this.raf)return;this.last=performance.now();this.raf=requestAnimationFrame(t=>this.frame(t))},
  stop(){cancelAnimationFrame(this.raf);this.raf=0},
  frame(t){this.raf=requestAnimationFrame(n=>this.frame(n));const perf=OC.Store.perf();const minDt=1000/perf.fps-1.5;const el=t-this.last;if(el<minDt)return;
   const dt=Math.min(.1,el/1000);this.last=t;this.fpsN++;this.fpsT+=el;if(this.fpsT>1000){this.fps=Math.round(this.fpsN*1000/this.fpsT);this.fpsN=0;this.fpsT=0}
-  Env.update();Sim.tick(dt);OC.Social.tick(dt);Cam.update(dt);
+  Env.update();/* 模擬以固定小步長前進，避免卡頓時角色穿過障礙物 */let sdt=dt*(this.timeScale||1);while(sdt>1e-4){const st=Math.min(.05,sdt);sdt-=st;Sim.tick(st);OC.Social.tick(st)}Cam.update(dt);
   if(this.renderOn){try{R.frame(dt)}catch(e){console.error('[render]',e);this.err=(this.err||0)+1}}
   OC.UI&&OC.UI.frame&&OC.UI.frame(dt)}};
 
@@ -52,7 +52,7 @@ const Input={ptrs:new Map(),drag:null,pinch:null,press:null,
   const D=this.drag;if(D){this.drag=null;if(D.moved<6&&!cancel&&performance.now()-D.t<500){const o=this.hitObj(p.x,p.y);if(o)OC.UI&&OC.UI.objTap(o);else{const now=performance.now();if(this.lastTap&&now-this.lastTap<330){const w=R.cam.unproject(p.x,p.y);const a=Sim.active();if(a&&a.loc===R.sc.id)OC.Play.call(a,w.x,w.z)}this.lastTap=now}}}}};
 
 /* ---------- 地點切換（含柔和轉場） ---------- */
-const World={go(id,{instant,focus}={}){const C=OC.Content;if(!C.LOC[id])return;OC.S.world.loc=id;
+const World={go(id,{instant,focus}={}){const C=OC.Content;if(!C.LOC[id])return;OC.S.world.loc=id;if(OC.Pages&&OC.Pages.cur)OC.Pages.close();
   const doIt=()=>{R.setScene(id);Sim.refreshActors();const sc=R.sc;const a=focus||[...R.actors].find(x=>x.id===OC.S.activeId)||R.actors[0];Cam.focus=a||null;Cam.follow=!!a;
    if(a&&sc.kind!=='room')Cam.set(a.x,a.z+.5,sc.cam.D,true);else Cam.set(sc.cam.tx,sc.cam.tz,sc.kind==='room'?sc.cam.D:19,true);OC.Quests.on('loc:'+id);U.emit('scene',id);U.emit('tut',id==='house'?'house':'map');OC.Store.save()};
   if(instant||!OC.UI){doIt();return}OC.UI.fade(doIt)}};
