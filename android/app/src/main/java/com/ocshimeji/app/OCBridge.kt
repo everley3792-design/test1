@@ -54,6 +54,23 @@ class OCBridge(private val act: MainActivity) {
     fun openPetSettings() { act.runOnUiThread { requestOverlay(force = true) } }
 
     @JavascriptInterface
+    fun hasUsageAccess(): String = AppSense.hasAccess(ctx).toString()
+
+    @JavascriptInterface
+    fun openUsageAccess() { act.runOnUiThread { try { act.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) } catch (_: Exception) {} } }
+
+    /** 拍照模式：把照片存到快取並開啟分享（可存到相簿） */
+    @JavascriptInterface
+    fun saveImage(name: String, dataUrl: String) {
+        if (!dataUrl.startsWith("data:image/") || dataUrl.length > 30_000_000) return
+        val bytes = try { android.util.Base64.decode(dataUrl.substringAfter(","), android.util.Base64.DEFAULT) } catch (_: Exception) { return }
+        val safe = name.replace(Regex("[^\\w.\\-]"), "_").take(60).ifBlank { "oc-shimeji.jpg" }
+        val dir = File(ctx.cacheDir, "exports").apply { mkdirs() }; val f = File(dir, safe); f.writeBytes(bytes)
+        val uri: Uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.files", f)
+        act.runOnUiThread { act.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "image/jpeg"; putExtra(Intent.EXTRA_STREAM, uri); addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) }, safe)) }
+    }
+
+    @JavascriptInterface
     fun vibrate(ms: String) {
         val t = ms.toLongOrNull()?.coerceIn(1, 120) ?: return
         val v = ContextCompat.getSystemService(ctx, Vibrator::class.java) ?: return
@@ -84,6 +101,7 @@ class OCBridge(private val act: MainActivity) {
             act.sendEvent(JSONObject().put("type", "overlay").put("ok", ok).toString())
             if (ok) startPetsIfAllowed()
         }
+        act.sendEvent(JSONObject().put("type", "usage").put("ok", AppSense.hasAccess(ctx)).toString())
         val ev = PetStore.drainEvents(ctx)
         if (ev != "[]") act.sendEvent("{\"type\":\"petEvents\",\"list\":$ev}")
     }
