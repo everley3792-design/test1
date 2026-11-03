@@ -294,14 +294,14 @@ class PetActor(private val svc: PetService, private val wm: WindowManager, data:
                         val d = e.rawY - lastRawY; lastRawY = e.rawY; petAcc += d; petDir = if (dx > 0) 1 else -1
                         val sgn = sign(d).toInt()
                         if (abs(petAcc) > svc.dp(14) && sgn != 0 && sgn != strokeDir) { strokeDir = sgn; petAcc = 0f; petStrokes++; sq.x = if (sgn > 0) .94f else 1.04f
-                            if (petStrokes % 3 == 0) { hearts(); PetStore.addEvent(svc, id, "pet") }
+                            if (petStrokes % 3 == 0) { hearts(); PetStore.addEvent(svc, this@PetActor.id, "pet") }
                             if (petStrokes % 8 == 0) say(pick("pet", "好舒服～")) }
                     } else if (mode == 2) { x = e.rawX; y = e.rawY + sizePx * .55f; if (abs(flingVX) > 50) facing = sign(flingVX) }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     removeCallbacks(longPress)
                     when (mode) {
-                        2 -> { held = false; state = "fall"; stateT = 0f; vx = flingVX.coerceIn(-3000f, 3000f) * .5f; vy = flingVY.coerceIn(-3000f, 3000f) * .5f; PetStore.addEvent(svc, id, "drop") }
+                        2 -> { held = false; state = "fall"; stateT = 0f; vx = flingVX.coerceIn(-3000f, 3000f) * .5f; vy = flingVY.coerceIn(-3000f, 3000f) * .5f; PetStore.addEvent(svc, this@PetActor.id, "drop") }
                         1 -> { setState("idle"); if (petStrokes >= 6) { face = "head_joy"; faceT = 1.6f } }
                         else -> {
                             val now = SystemClock.uptimeMillis()

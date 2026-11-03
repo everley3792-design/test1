@@ -149,7 +149,7 @@ input[type=range]{accent-color:var(--acc);height:28px}
 .houses{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 14px}.hs{display:flex;flex-direction:column;align-items:center;padding:8px 6px;border-radius:18px;background:var(--panel2);border:2px solid transparent;text-align:center}.hs.on{border-color:var(--acc);background:#FFF1D6}.hs canvas{width:100%;height:auto}.hs b{font-size:12.5px}.hs small{font-size:10.5px;color:var(--ink2);line-height:1.3}
 :root[data-theme=dark] .hs.on{background:#4A3E2C}
 /* ---------- 提示、慶祝 ---------- */
-#toasts{position:fixed;left:50%;top:calc(70px + var(--safe-t));transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;width:max-content;max-width:90vw}
+#toasts{position:fixed;left:50%;top:calc(132px + var(--safe-t));transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;width:max-content;max-width:90vw}
 .toast{display:flex;align-items:center;gap:8px;padding:8px 14px 8px 8px;border-radius:18px;background:var(--panel);box-shadow:var(--sh2);font-size:13px;font-weight:700;opacity:0;transform:translateY(-8px) scale(.96);transition:opacity .25s,transform .3s cubic-bezier(.2,.9,.3,1.2)}
 .toast.in{opacity:1;transform:none}.toast.out{opacity:0;transform:translateY(-6px)}.toast i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--acc2);color:#fff;font-style:normal;font-size:12px}
 .t-warn i,.t-anger i{background:var(--warn)}.t-heart i{background:var(--pink)}.t-star i,.t-coin i,.t-quest i{background:#F2B84B}.t-info i{background:var(--blue)}.t-sick i{background:#9DB07A}

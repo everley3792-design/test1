@@ -78,6 +78,13 @@
 - 40 倍速 AI 測試：角色會在家園、屋內、廣場、森林之間移動，出現拌嘴、安慰、跌倒、願望實現、技能升級等事件。
 - 效能模式切換：Quality 60 FPS／Balanced 60 FPS／Battery 30 FPS 且渲染解析度確實降低，切換不需重新載入。
 
+**APK 建置**：`./gradlew assembleDebug` 成功（AGP 8.7.3、Kotlin 2.0.21、compileSdk/targetSdk 35、minSdk 26），
+已用 `aapt` 確認權限（SYSTEM_ALERT_WINDOW、FOREGROUND_SERVICE_SPECIAL_USE、POST_NOTIFICATIONS）、`specialUse` 前景服務與
+內嵌的遊戲檔案。安裝檔：`dist/oc-shimeji-v4-debug.apk`（debug 簽章，可直接側載測試）。
+GitHub Actions（`.github/workflows/android.yml`）每次推送會自動建置並上傳 APK。
+
+另外以強制事件驗證：兩位愛吵架的角色大吵 → 出現「絕交」決定卡 → 選擇後關係變為「絕交」；感冒後喝熱湯縮短病程。
+
 **未能實機驗證**：本環境沒有 Android 實機或模擬器，系統懸浮桌寵只完成編譯，尚未在實機上測試顯示於其他 App 上方、
 觸控穿透、旋轉與鎖屏行為。請用 `android/` 專案安裝到手機測試，並回報問題。
 

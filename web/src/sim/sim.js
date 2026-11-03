@@ -178,7 +178,7 @@ const Sim={agents:new Map(),acc:0,t:0,
   const tries=[0,.45,-.45,.9,-.9,1.35,-1.35,1.8,-1.8];if(a.avoid)tries.sort((p,q)=>Math.abs(p-a.avoid*.45)-Math.abs(q-a.avoid*.45));
   for(const off of tries){const an=ang+off;const px=a.x+Math.cos(an)*sp*dt,pz=a.z+Math.sin(an)*sp*dt;if(sc.ok(px,pz,a.task&&a.task.obj)||dist<.9&&sc.walk(px,pz)){nx=px;nz=pz;ok=true;if(off)a.avoid=Math.sign(off);break}}
   /* 和其他角色保持距離；絕交中的人會互相迴避 */
-  for(const o of this.agents.values()){if(o===a||o.loc!==a.loc||o.away)continue;const ex=nx-o.x,ez=nz-o.z,d2=ex*ex+ez*ez;if(OC.Social&&d2<5&&d2>1e-4&&OC.Social.rel(c.id,o.id).broken){const d=Math.sqrt(d2);nx+=ex/d*sp*dt*.6;nz+=ez/d*sp*dt*.6;continue}if(d2<.28&&d2>1e-4){const d=Math.sqrt(d2);nx+=ex/d*(.53-d)*.25;nz+=ez/d*(.53-d)*.25}}
+  for(const o of this.agents.values()){if(o===a||o.loc!==a.loc||o.away)continue;const ex=nx-o.x,ez=nz-o.z,d2=ex*ex+ez*ez;if(OC.Social&&d2<5&&d2>1e-4&&OC.Social.rel(c.id,o.id).broken){const d=Math.sqrt(d2);nx+=ex/d*sp*dt*.6;nz+=ez/d*sp*dt*.6;continue}if(d2<.62&&d2>1e-4){const d=Math.sqrt(d2);nx+=ex/d*(.79-d)*.22;nz+=ez/d*(.79-d)*.22}}
   if(!ok||!sc.walk(nx,nz)){a.stuck+=dt;if(a.stuck>1.4){a.goal=null;a.stuck=0}return}
   a.stuck=Math.max(0,a.stuck-dt);const vx=(nx-a.x)/dt,vz=(nz-a.z)/dt;a.vx=U.approach(a.vx,vx,12,dt);a.vz=U.approach(a.vz,vz,12,dt);a.x=nx;a.z=nz;
   if(Math.abs(a.vx)>.08)a.facing=a.vx>0?1:-1;if(a.pose!=='walk'&&a.pose!=='run')a.pose=a.goal.fast?'run':'walk';

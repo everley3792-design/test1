@@ -41,7 +41,7 @@ const Social={LBL,
  start(a,b,forced){const k=forced||this.choose(a,b);const I={k,a,b,step:0,t:0,lines:[],done:false};a.inter=I;b.inter=I;
   if(a.task)OC.Sim.finish(a,false);if(b.task)OC.Sim.finish(b,false);
   /* 走到彼此身邊 */
-  const sc=OC.Scenes.get(a.loc);const mx=(a.x+b.x)/2,mz=(a.z+b.z)/2;const side=a.x<b.x?-1:1;const pa=sc.ok(mx+side*.55,mz)?{x:mx+side*.55,z:mz}:sc.near(mx,mz,1),pb=sc.ok(mx-side*.55,mz)?{x:mx-side*.55,z:mz}:sc.near(mx,mz,1);
+  const sc=OC.Scenes.get(a.loc);const mx=(a.x+b.x)/2,mz=(a.z+b.z)/2;const side=a.x<b.x?-1:1;const pa=sc.ok(mx+side*.72,mz)?{x:mx+side*.72,z:mz}:sc.near(mx,mz,1.2),pb=sc.ok(mx-side*.72,mz)?{x:mx-side*.72,z:mz}:sc.near(mx,mz,1.2);
   if(k==='cold'){I.phase='talk'}else{a.goal={x:pa.x,z:pa.z};b.goal=Math.hypot(b.x-pb.x,b.z-pb.z)>1.5?{x:pb.x,z:pb.z}:null;I.phase='meet';I.timeout=8}
   this.list.add(I);return I},
  list:new Set(),
