@@ -1437,6 +1437,11 @@ const PROPS={
  mushrooms:()=>make('mush',.7,.5,(P,r)=>{for(let i=0;i<4;i++){const x=U.lerp(-.25,.25,r()),h=U.lerp(.1,.25,r());P.box(x-.02,0,.04,h,.03,'#F4ECDD');P.poly([[x-.1,h],[x+.1,h],[x,h+.1]],'#D9534F');P.ell(x-.02,h+.04,.015,.015,'#FFF')}}),
  picnic:()=>make('picnic',1.8,.5,P=>{P.poly([[-.8,0],[.7,0],[.95,.32],[-.55,.32]],'#E46B6B');for(let i=0;i<5;i++)P.poly([[-.8+i*.3,0],[-.65+i*.3,0],[-.4+i*.3,.32],[-.55+i*.3,.32]],'#FFFFFF',.7);P.box(.2,.1,.32,.18,.18,'#C99B6D')}),
  bridge:()=>make('bridge',3.2,.7,P=>{for(let i=0;i<8;i++)P.box(-1.5+i*.38,.08,.36,.07,1.6,i%2?'#B58A5E':'#C49A6C');P.box(-1.6,.15,3.2,.06,.05,'#8B6A4E');P.box(-1.6+.6,.5,3.2,.06,.05,'#8B6A4E')}),
+ lily:(v=0)=>make('lily:'+v,.9,.3,(P,r)=>{for(let i=0;i<3;i++){const x=(r()-.5)*.5,y=.08+r()*.1,s=.12+r()*.08;P.ell(x,y,s,s*.45,'#6FAE55');P.poly([[x,y],[x+s,y+.01],[x+s*.8,y-s*.2]],'#5C9A4C')}if(v%2===0){P.ell(.05,.16,.06,.04,'#FFF4F6');P.ell(.05,.18,.03,.025,'#F6B8C8')}}),
+ cattail:(v=0)=>make('cattail:'+v,.6,1.2,(P,r)=>{for(let i=0;i<5;i++){const x=(r()-.5)*.4,h=.6+r()*.4;P.line([[x,0],[x+(r()-.5)*.08,h]],'#6FA85A',.025);if(i%2===0)P.poly([[x-.03,h-.05],[x+.03,h-.05],[x+.03,h+.15],[x-.03,h+.15]],'#8B5A3C');else P.poly([[x,0],[x+.05,0],[x+(r()-.5)*.3,h*.8]],'#86BE64')}}),
+ stones:(v=0)=>make('stones:'+v,1.4,.3,(P,r)=>{for(let i=0;i<3;i++){const x=-.45+i*.45+(r()-.5)*.1,y=.1+(r()-.5)*.05;P.ell(x,y-.02,.17,.07,'#9A9488',.5);P.ell(x,y,.16,.07,'#CFC9BC');P.ell(x-.04,y+.02,.07,.03,'#E4DFD4')}}),
+ boat:()=>make('boat',2.2,.9,P=>{P.ell(0,.05,1,.18,'#1E3A4A',.18);P.poly([[-1,.4],[1,.4],[.75,.05],[-.75,.05]],'#9C6B46');P.poly([[-1,.4],[1,.4],[.92,.48],[-.92,.48]],'#B98455');P.poly([[-.85,.4],[.85,.4],[.7,.18],[-.7,.18]],'#7A5236');P.box(-.1,.25,.2,.12,.5,'#C99B6D');P.line([[.2,.45],[.9,.75]],'#C99B6D',.04)}),
+ lampost:()=>make('lampost2',.5,1.6,P=>{P.ell(0,.03,.2,.06,'#222',.2);P.box(-.04,0,.08,1.2,.05,'#6E5A4A');P.box(-.13,1.2,.26,.3,.2,'#5B4D54');P.box(-.09,1.24,.18,.22,.05,'#FFE7A8');P.poly([[-.18,1.5],[.18,1.5],[0,1.62]],'#4E4148')}),
  rdoor:()=>make('rdoor',1.4,2.3,P=>{P.poly([[-.6,0],[.6,0],[.6,1.95],[0,2.15],[-.6,1.95]],'#8C5E36');P.poly([[-.48,0],[.48,0],[.48,1.88],[0,2.04],[-.48,1.88]],'#B07A47');P.poly([[0,0],[.48,0],[.48,1.88],[0,2.04]],'#A06D3F');P.ell(.33,1,.05,.05,'#FFD36E');P.ell(0,1.6,.18,.18,'#FFE7A8',.7);P.poly([[-.55,.02],[.55,.02],[.7,-.08],[-.7,-.08]],'#9BC4A2')}),
  mat:()=>make('mat',1.6,.4,P=>{P.poly([[-.7,0],[.6,0],[.85,.28],[-.45,.28]],'#9BC4E2');P.poly([[-.5,.04],[.4,.04],[.6,.24],[-.3,.24]],'#BFDBEF')})};
 
@@ -1507,6 +1512,8 @@ function home(){const rng=U.rng(4021);const sc=base('home',{cam:{tx:0,tz:.5,D:16
  const cliff=outline(-6,-7.3,5.6,2.3,9.1,64,.12,2.2);sc.cliffs.push({pts:cliff,h:1.4,col:'grass'});
  const cliff2=outline(7,-7.2,4,1.8,3.3,56,.14,2.4);sc.cliffs.push({pts:cliff2,h:.9,col:'grass'});
  sc.ponds.push({pts:outline(7.4,-.6,1.9,1.2,2.2,48,.12,2)});
+  [[6.8,-.9,0],[7.9,-.3,1],[7.2,0,2]].forEach(([x,z,v])=>sc.objs.push(S('lily',x,z,{r:0,flat:1,v,y:.02})));
+  [[5.6,-.2],[8.9,-.9],[6.5,-1.7]].forEach(([x,z],i)=>sc.objs.push(S('cattail',x,z,{r:0,deco:1,v:i})));
  /* 小徑 */
  sc.paths.push({pts:[[-1,-1.6],[-.6,0],[-1,1.8],[1.5,3],[4,3.6],[6.5,4.4]],w:1.1});
  sc.paths.push({pts:[[-1,1.8],[-4.5,2.6],[-7.5,2.4]],w:.9});
@@ -1532,6 +1539,8 @@ function home(){const rng=U.rng(4021);const sc=base('home',{cam:{tx:0,tz:.5,D:16
  /* 裝飾小花、草叢 */
  O.push(...scatter(rng,26,(r,i)=>{const p=[U.lerp(-11,11,r()),U.lerp(-4.5,7.8,r())];if(!inside(grass,...p))return null;return S('flowers',p[0],p[1],{cols:[['#F08FA5','#FFFFFF'],['#FFD36E','#F6F0E6'],['#B79CF0','#FFFFFF'],['#F2A65A','#FFD36E']][i%4],r:0,deco:1,v:i%6})}));
  O.push(...scatter(rng,60,(r,i)=>{const p=[U.lerp(-11.5,11.5,r()),U.lerp(-5,8.5,r())];if(!inside(grass,...p))return null;return S('tuft',p[0],p[1],{r:0,deco:1,v:i%5})}));
+ [[1.2,3.1],[3.6,3.7],[-3.2,2.5]].forEach(([x,z],i)=>O.push(S('stones',x,z,{r:0,flat:1,v:i})));
+  [[-2.6,-.6],[.6,-.6]].forEach(([x,z])=>O.push(S('lampost',x,z,{r:.15,light:2})));
  sc.spots={door:{x:-1,z:-1.6},stargaze:{x:1,z:5.6},sunset:{x:-1,z:7.4},view:{x:-9.6,z:3.6}};
  sc.houseDefault={x:-1,z:-2.6};
  sc.houseZone=(x,z)=>inside(grass,x,z)&&!inside(cliff,x,z)&&!inside(cliff2,x,z);
@@ -1567,7 +1576,7 @@ function beach(){const rng=U.rng(919);const sc=base('beach',{cam:{tx:0,tz:-.5,D:
  const O=sc.objs;
  O.push(S('pier',6.4,3.2,{r:0,flat:1}));O.push(S('pier',6.4,4.4,{r:0,flat:1}));O.push(S('pier',6.4,5.6,{r:0,flat:1,act:'fish',name:'碼頭'}));
  sc.pierZone=[[5.2,2],[7.6,2],[7.6,6.4],[5.2,6.4]];
- O.push(S('umbrella',-3.6,-.6,{r:.5}));O.push(S('mat',-3.2,0,{r:0,flat:1,act:'sunbathe',name:'沙灘墊'}));
+ O.push(S('boat',8.6,4.6,{r:0,flat:1}));O.push(S('umbrella',-3.6,-.6,{r:.5}));O.push(S('mat',-3.2,0,{r:0,flat:1,act:'sunbathe',name:'沙灘墊'}));
  [[-9.6,-3],[-6.6,-4.2],[9.8,-3.4],[2.4,-4.6],[-12,-1]].forEach(([x,z],i)=>O.push(S('tree',x,z,{kind:'palm',r:.4,v:i})));
  [[-7.6,1.4,.8],[10.6,.8,1.1],[0,-3.2,.6]].forEach(([x,z,s],i)=>O.push(S('rock',x,z,{size:s,r:.5*s,v:i})));
  O.push(S('log',3,-2,{r:.7,act:'bench',name:'漂流木',seat:1}));
@@ -1693,7 +1702,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(this.static,0,0);ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
   if(this.sc.kind!=='room'){this.drawSkyLive(ctx);this.drawWater(ctx);if(perf.cloudShadow&&!Env.isNight())this.drawCloudShadows(ctx)}
   this.drawWorld(ctx,dt);
-  Fx.tick(dt);this.drawFx(ctx);
+  this.birds(ctx,dt);Fx.tick(dt);this.drawFx(ctx);
   this.drawGrade(ctx);
   this.drawWeather(ctx,dt);
   this.drawOverlay(ctx)},
@@ -1842,12 +1851,25 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
  spriteOf(o){if(o._spr&&o._sv===o.style)return o._spr;if(o.type==='cfurn'||o.type==='cbuild'){const k=OC.Creations.imgs.get(o.cid);if(o._spr&&o._sk===k)return o._spr;o._sk=k}let s=null;
   switch(o.type){case'tree':s=SP.tree(o.kind,o.col,o.v);break;case'bush':s=SP.bush(o.col,o.fl,o.v);break;case'rock':s=SP.rock(o.size,o.v);break;case'flowers':s=SP.flowers(o.cols||['#FFF'],o.v);break;case'tuft':s=SP.tuft(o.col||(this.sc.id==='forest'?'#5C9A4C':'#6FAE5A'),o.v);break;
    case'house':s=SP.house(o.style);break;case'shop':s=SP.PROPS.shop(o.c,o.name,o.awn);break;case'stall':s=SP.PROPS.stall(o.c);break;case'furn':s=SP.FURN[o.k]&&SP.FURN[o.k]();break;
-   case'bridge':s=SP.PROPS.bridge();break;case'rdoor':s=SP.PROPS.rdoor();break;
+   case'bridge':s=SP.PROPS.bridge();break;case'lily':s=SP.PROPS.lily(o.v);break;case'cattail':s=SP.PROPS.cattail(o.v);break;case'stones':s=SP.PROPS.stones(o.v);break;case'boat':s=SP.PROPS.boat();break;case'lampost':s=SP.PROPS.lampost();break;case'rdoor':s=SP.PROPS.rdoor();break;
    case'cfurn':case'cbuild':{const c=OC.Creations.get(o.cid);const src=OC.Creations.imgs.get(o.cid);s=c&&src?SP.fromImg('cr:'+o.cid+':'+src.length,src,c.size||(o.type==='cbuild'?3:1.2)):null;if(!s)return null;break}default:s=SP.PROPS[o.type]&&SP.PROPS[o.type]()}
   o._spr=s;o._sv=o.style;return s},
  drawActor(ctx,a,dt){const cam=this.cam;const q=cam.p(a.x,(a.gy||0)+(a.y||0),a.z);if(q.d<.5)return;const s=q.s;a.sx=q.x;a.sy=q.y;a.ss=s;
   OC.Rig.draw(ctx,a,q.x,q.y,s,dt)},
  /* ---------- 粒子 ---------- */
+ /* 小鳥：在地上跳、啄食；有夥伴靠近就飛走，過一陣子再回來 */
+ birds(ctx,dt){if(!this.perf.ambient||this.sc.kind==='room')return;const sc=this.sc;if(this._bsc!==sc.id){this._bsc=sc.id;this.bl=[];const n=sc.id==='beach'?4:3;for(let i=0;i<n;i++){const p=sc.randomPoint();this.bl.push({x:p.x,z:p.z,y:0,vy:0,vx:0,f:1,t:Math.random()*3,sea:sc.id==='beach',gone:0})}}
+  const cam=this.cam;for(const b of this.bl){b.t+=dt;if(b.gone>0){b.gone-=dt;b.y+=dt*2.2;b.x+=b.vx*dt;if(b.gone<=0){const p=sc.randomPoint();b.x=p.x;b.z=p.z;b.y=4;b.land=1}else{this.drawBird(ctx,b,true);continue}}
+   if(b.land){b.y=Math.max(0,b.y-dt*3);if(b.y<=0)b.land=0}
+   for(const a of this.actors){if(Math.hypot(a.x-b.x,a.z-b.z)<1.5&&!b.land){b.gone=6+Math.random()*6;b.vx=(b.x>a.x?1:-1)*U.rnd(1.5,3);break}}
+   if(!b.gone&&!b.land){if(b.t>1.4&&Math.random()<dt*1.2){b.t=0;b.vy=1.4;b.f=Math.random()<.5?1:-1;const nx=b.x+b.f*.25;if(sc.walk(nx,b.z))b.x=nx}if(b.vy||b.y>0){b.vy-=9*dt;b.y=Math.max(0,b.y+b.vy*dt);if(b.y===0)b.vy=0}}
+   this.drawBird(ctx,b,b.gone>0||b.land)}},
+ drawBird(ctx,b,fly){const q=this.cam.p(b.x,b.y,b.z);if(q.d<.5)return;const s=q.s*.13;ctx.save();ctx.translate(q.x,q.y);ctx.scale(b.vx<0||b.f<0?-1:1,1);
+  ctx.fillStyle='rgba(30,30,30,.15)';if(!fly){ctx.beginPath();ctx.ellipse(0,0,s*1.1,s*.35,0,0,6.3);ctx.fill()}
+  const body=b.sea?'#F7F7F2':'#B98E6A',wing=b.sea?'#C9D0D6':'#8C6648';const lift=fly?0:-s*.9-(Math.sin(b.t*20)>.6&&!fly?s*.2:0);ctx.translate(0,lift);
+  ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(0,0,s*1.1,s*.75,0,0,6.3);ctx.fill();ctx.beginPath();ctx.arc(s*.9,-s*.55,s*.5,0,6.3);ctx.fill();
+  ctx.fillStyle='#F2B33A';ctx.beginPath();ctx.moveTo(s*1.35,-s*.6);ctx.lineTo(s*1.8,-s*.45);ctx.lineTo(s*1.35,-s*.35);ctx.fill();ctx.fillStyle='#2E2A2E';ctx.beginPath();ctx.arc(s*1.05,-s*.65,s*.1,0,6.3);ctx.fill();
+  ctx.fillStyle=wing;ctx.beginPath();if(fly){const fl=Math.sin(b.t*30)*s*1.2;ctx.moveTo(-s*.2,-s*.2);ctx.lineTo(-s*.9,-s*.4-fl);ctx.lineTo(s*.4,-s*.3);}else{ctx.ellipse(-s*.25,-s*.05,s*.65,s*.4,.3,0,6.3)}ctx.fill();ctx.restore()},
  drawFx(ctx){const cam=this.cam;for(const p of Fx.list){if(p.delay>0)continue;const q=cam.p(p.x,p.y,p.z);const a=1-p.t/p.life;const s=q.s*p.sz;
   if(p.k==='heart'){ctx.globalAlpha=Math.min(1,a*1.6);const k=s*(1+Math.sin(p.t*8)*.06);heart(ctx,q.x+Math.sin(p.t*4)*s*.4,q.y,k,'#F27C9B')}
   else if(p.k==='spark'){ctx.globalAlpha=a;ctx.fillStyle=p.col;star4(ctx,q.x,q.y,s*(.6+a*.4))}
@@ -2525,6 +2547,38 @@ OC.Social=Social;
 })(window.OC);
 
 </script>
+<script data-src="sim/group.js">
+/* OC Shimeji v4.1 · 群體生活：營火聚會、拜訪朋友、黏人跟隨、下雨躲雨、八卦聊天 */
+(function(OC){'use strict';
+const {U,Content:C,Chars,Env}=OC;
+const Group={t:0,lastParty:0,wasRain:false,
+ tick(dt){this.t+=dt;if(this.t<15)return;this.t=0;const S=OC.Sim;if(!S.agents.size)return;const A=[...S.agents.values()];
+  this.rain(A);this.party(A);this.visit(A);this.follow(A)},
+ free:a=>!a.busy()&&!a.away&&(!a.task||OC.Sim.casual(a)),
+ /* 下雨了：在外面的夥伴跑去屋內或樹下 */
+ rain(A){const r=Env.rainy();if(r&&!this.wasRain){for(const a of A){if(a.loc==='house'||!this.free(a))continue;const hasHouse=OC.S.world.house&&OC.S.world.house.placed;
+   if(OC.Sim.visible(a))a.say(U.pick(['下雨了！快躲雨～','哇，好多雨！','我的尾巴要濕了！']),{life:2});
+   if(a.loc==='home'&&hasHouse&&!Chars.has(a.c,'nature')){OC.Sim.start(a,OC.Acts.ACT.sofa,{cmd:1})}else OC.Sim.start(a,OC.Acts.ACT.shade,{cmd:1})}}
+  this.wasRain=r},
+ /* 傍晚營火聚會：外向／領袖型的夥伴邀請大家 */
+ party(A){if(Date.now()-this.lastParty<12*60e3||!(Env.phase==='dusk'||Env.isNight())||Env.rainy())return;const host=A.find(a=>this.free(a)&&a.loc==='home'&&(Chars.has(a.c,'extrovert')||Chars.has(a.c,'leader')||Chars.has(a.c,'friendlyhost')||Chars.sl(a.c,'social')>.7));
+  if(!host||Math.random()>.35)return;const guests=A.filter(a=>a!==host&&this.free(a)&&!OC.Social.rel(host.id,a.id).broken);if(!guests.length)return;this.lastParty=Date.now();
+  const fire=OC.Scenes.get('home').objs.find(o=>o.act==='campfire');if(!fire)return;
+  if(OC.Sim.visible(host))host.say(Chars.say(host.c,'大家！今晚一起圍營火吧！'),{life:3});OC.Sim.log(host.c,`${host.c.name}邀請大家晚上一起圍營火`,'star');
+  const all=[host,...guests];all.forEach((a,i)=>{const T=OC.Acts.ACT.campfire;OC.Sim.start(a,T,{cmd:1,loc:'home'});if(a.task){a.task.dur=90;a.task.party=1}});
+  /* 聚會中：輪流說話，結束時大家的感情都變好 */
+  let n=0;const iv=setInterval(()=>{n++;const here=all.filter(a=>a.task&&a.task.party&&a.task.phase==='do');if(here.length>=2&&OC.Sim.visible(here[0])){const sp=U.pick(here);sp.say(Chars.say(sp.c,U.pick(['我們來講鬼故事吧！','火光好溫暖～','今天過得好開心。','下次也要一起喔！','棉花糖烤好了！',`${U.pick(here).c.name}，你今天做了什麼？`])),{life:2.8});if(Math.random()<.5)OC.Fx.hearts(sp.x,1.3,sp.z,1)}
+   if(n>=8){clearInterval(iv);for(let i=0;i<here.length;i++)for(let j=i+1;j<here.length;j++){OC.Social.bond(here[i],here[j],5,'一起圍營火聊天')}for(const a of here)OC.Sim.remember(a.c,'party','和大家圍營火聊到很晚',.9,here.filter(x=>x!==a).map(x=>x.id),'home');if(here.length>=2)OC.Sim.log(null,`${here.map(a=>a.c.name).join('、')}一起度過了溫暖的營火夜。`,'heart')}},10000)},
+ /* 想念好朋友：去朋友所在的地點 */
+ visit(A){for(const a of A){if(!this.free(a)||a.c.needs.social>45||Math.random()>.3)continue;let best=null,bf=30;for(const o of A){if(o===a||o.loc===a.loc||o.away)continue;const r=OC.Social.rel(a.id,o.id);if(!r.broken&&r.f>bf){bf=r.f;best=o}}
+   if(best){OC.Sim.sendTo(a,best.loc);if(OC.Sim.visible(a))a.say(`去找${best.c.name}玩～`,{life:2});OC.Sim.log(a.c,`${a.c.name}跑去${C.LOC[best.loc].t}找${best.c.name}`,'heart');return}}},
+ /* 黏人的夥伴會跟著你正在操控的夥伴 */
+ follow(A){const me=OC.Sim.active();if(!me||me.away)return;for(const a of A){if(a===me||a.loc!==me.loc||!this.free(a))continue;if(!(Chars.has(a.c,'clingy')||OC.Social.rel(a.id,me.id).f>60))continue;if(Math.random()>.25)continue;
+   const d=Math.hypot(a.x-me.x,a.z-me.z);if(d>3){const sc=OC.Scenes.get(a.loc);const p=sc.near(me.x,me.z,1.4);a.goal={x:p.x,z:p.z};if(OC.Sim.visible(a)&&Math.random()<.4)a.say(U.pick([`等等我～${me.c.name}！`,'我也要去！','一起走嘛～']),{life:1.8})}}}};
+OC.Group=Group;
+})(window.OC);
+
+</script>
 <script data-src="game/quests.js">
 /* OC Shimeji v4 · 每日任務、每週目標、成就、商店輪替 */
 (function(OC){'use strict';
@@ -2667,8 +2721,8 @@ const Cine={on:false,t:0,ev:[],fx:{},lb:0,
  draw(ctx,W,H){if(!this.on)this.lb=Math.max(0,this.lb-.06);const lbv=this.lb;if(lbv<=0)return;const bar=H*.085*U.ease.out(lbv);ctx.fillStyle='rgba(28,22,26,.92)';ctx.fillRect(0,0,W,bar);ctx.fillRect(0,H-bar,W,bar);if(!this.on)return;
   const a=this.a,fx=this.fx,t=this.t;if(!a||!a.ss)return;const hx=a.sx,hy=a.sy-a.ss*1.25;
   /* 背景光芒（最愛＝粉色、喜歡＝金色、禮物＝彩虹） */
-  if(fx.rays){const k=Math.min(1,(t-fx.rays.t0)/.4),fade=fx.rays.until?Math.max(0,1-(t-fx.rays.until)/.4):1;if(k>0&&fade>0){ctx.save();ctx.translate(hx,a.sy-a.ss*.6);ctx.rotate(t*.35);ctx.globalAlpha=.32*k*fade;
-    for(let i=0;i<14;i++){ctx.rotate(Math.PI*2/14);ctx.fillStyle=i%2?fx.rays.c1:fx.rays.c2;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-W*.06,-H);ctx.lineTo(W*.06,-H);ctx.fill()}ctx.restore();ctx.globalAlpha=1}}
+  if(fx.rays){const k=Math.min(1,(t-fx.rays.t0)/.4),fade=fx.rays.until?Math.max(0,1-(t-fx.rays.until)/.4):1;if(k>0&&fade>0){ctx.save();ctx.translate(hx,a.sy-a.ss*.6);ctx.rotate(t*.35);ctx.globalAlpha=.13*k*fade;
+    for(let i=0;i<10;i++){ctx.rotate(Math.PI*2/10);ctx.fillStyle=i%2?fx.rays.c1:fx.rays.c2;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-W*.16,-H*.7);ctx.lineTo(W*.16,-H*.7);ctx.fill()}const gl=ctx.createRadialGradient(0,0,0,0,0,W*.5);gl.addColorStop(0,'rgba(255,255,255,.35)');gl.addColorStop(1,'rgba(255,255,255,0)');ctx.globalAlpha=k*fade;ctx.fillStyle=gl;ctx.beginPath();ctx.arc(0,0,W*.5,0,Math.PI*2);ctx.fill();ctx.restore();ctx.globalAlpha=1}}
   /* 憂鬱線條（討厭的東西） */
   if(fx.gloom){ctx.save();ctx.globalAlpha=.55*Math.min(1,(t-fx.gloom)/.3);ctx.strokeStyle='#7F8EB2';ctx.lineWidth=2.4;for(let i=0;i<7;i++){const x=hx-a.ss*.5+i*a.ss*.16;ctx.beginPath();ctx.moveTo(x,hy-a.ss*.35);ctx.lineTo(x,hy+a.ss*.05+Math.sin(t*3+i)*4);ctx.stroke()}ctx.restore()}
   /* 物品登場：上方彈出＋光環，之後落入手中 */
@@ -2945,7 +2999,7 @@ const UI={ic,COIN,sheets:[],blockWorld:false,placing:null,
    return`<button class="rd-b" data-k="${k}" style="--x:${Math.cos(an)*R|0}px;--y:${Math.sin(an)*R*.86|0}px;--d:${n*25}ms"><span>${ic(i,26)}</span><small>${t}</small></button>`}).join('')}</div>`);
   document.getElementById('app').appendChild(el);this.rd={el,a};this.placeRadial();requestAnimationFrame(()=>el.classList.add('open'));
   el.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;U.buzz(6);this.radialAct(a,b.dataset.k)}},
- placeRadial(){const r=this.rd;if(!r)return;const a=r.a;if(!a.ss)return;const x=a.sx,y=a.sy-a.ss*.75;const k=(x|0)+','+(y|0);if(r.k!==k){r.k=k;r.el.style.transform=`translate(${x|0}px,${y|0}px)`}},
+ placeRadial(){const r=this.rd;if(!r)return;const a=r.a;if(!a.ss)return;const W=innerWidth,R=140;const x=U.clamp(a.sx,R+12,W-R-12),y=U.clamp(a.sy-a.ss*.75,250,innerHeight-200);const k=(x|0)+','+(y|0);if(r.k!==k){r.k=k;r.el.style.transform=`translate(${x|0}px,${y|0}px)`}},
  closeFloating(keep){if(this.rd){const {el,a}=this.rd;this.rd=null;el.classList.remove('open');el.classList.add('out');setTimeout(()=>el.remove(),220);if(a.task&&a.task.def.id==='_menu'){a.task=null;a.lookAt=null}}
   if(keep!=='keepTray'&&OC.Bag)OC.Bag.closeTray();if(this.qsOpen&&keep!=='keepQS'&&keep!=='keepTray')this.toggleQS()},
  radialAct(a,k){const c=a.c;
@@ -3790,7 +3844,7 @@ const Loop={timeScale:1,raf:0,last:0,acc:0,paused:false,renderOn:true,fpsN:0,fps
  stop(){cancelAnimationFrame(this.raf);this.raf=0},
  frame(t){this.raf=requestAnimationFrame(n=>this.frame(n));const perf=OC.Store.perf();const minDt=1000/perf.fps-1.5;const el=t-this.last;if(el<minDt)return;
   const dt=Math.min(.1,el/1000);this.last=t;this.fpsN++;this.fpsT+=el;if(this.fpsT>1000){this.fps=Math.round(this.fpsN*1000/this.fpsT);this.fpsN=0;this.fpsT=0}
-  Env.update();/* 模擬以固定小步長前進，避免卡頓時角色穿過障礙物 */let sdt=dt*(this.timeScale||1);while(sdt>1e-4){const st=Math.min(.05,sdt);sdt-=st;Sim.tick(st);OC.Social.tick(st)}OC.Cine&&OC.Cine.tick(dt);Cam.update(dt);
+  Env.update();/* 模擬以固定小步長前進，避免卡頓時角色穿過障礙物 */let sdt=dt*(this.timeScale||1);while(sdt>1e-4){const st=Math.min(.05,sdt);sdt-=st;Sim.tick(st);OC.Social.tick(st)}OC.Cine&&OC.Cine.tick(dt);OC.Group&&OC.Group.tick(dt*(this.timeScale||1));Cam.update(dt);
   if(this.renderOn){try{R.frame(dt)}catch(e){console.error('[render]',e);this.err=(this.err||0)+1}}
   OC.UI&&OC.UI.frame&&OC.UI.frame(dt)}};
 

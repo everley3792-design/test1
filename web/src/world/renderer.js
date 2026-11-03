@@ -64,7 +64,7 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
   ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(this.static,0,0);ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
   if(this.sc.kind!=='room'){this.drawSkyLive(ctx);this.drawWater(ctx);if(perf.cloudShadow&&!Env.isNight())this.drawCloudShadows(ctx)}
   this.drawWorld(ctx,dt);
-  Fx.tick(dt);this.drawFx(ctx);
+  this.birds(ctx,dt);Fx.tick(dt);this.drawFx(ctx);
   this.drawGrade(ctx);
   this.drawWeather(ctx,dt);
   this.drawOverlay(ctx)},
@@ -213,12 +213,25 @@ const R={cv:null,ctx:null,cam:new Camera(),sc:null,static:null,sctx:null,skey:''
  spriteOf(o){if(o._spr&&o._sv===o.style)return o._spr;if(o.type==='cfurn'||o.type==='cbuild'){const k=OC.Creations.imgs.get(o.cid);if(o._spr&&o._sk===k)return o._spr;o._sk=k}let s=null;
   switch(o.type){case'tree':s=SP.tree(o.kind,o.col,o.v);break;case'bush':s=SP.bush(o.col,o.fl,o.v);break;case'rock':s=SP.rock(o.size,o.v);break;case'flowers':s=SP.flowers(o.cols||['#FFF'],o.v);break;case'tuft':s=SP.tuft(o.col||(this.sc.id==='forest'?'#5C9A4C':'#6FAE5A'),o.v);break;
    case'house':s=SP.house(o.style);break;case'shop':s=SP.PROPS.shop(o.c,o.name,o.awn);break;case'stall':s=SP.PROPS.stall(o.c);break;case'furn':s=SP.FURN[o.k]&&SP.FURN[o.k]();break;
-   case'bridge':s=SP.PROPS.bridge();break;case'rdoor':s=SP.PROPS.rdoor();break;
+   case'bridge':s=SP.PROPS.bridge();break;case'lily':s=SP.PROPS.lily(o.v);break;case'cattail':s=SP.PROPS.cattail(o.v);break;case'stones':s=SP.PROPS.stones(o.v);break;case'boat':s=SP.PROPS.boat();break;case'lampost':s=SP.PROPS.lampost();break;case'rdoor':s=SP.PROPS.rdoor();break;
    case'cfurn':case'cbuild':{const c=OC.Creations.get(o.cid);const src=OC.Creations.imgs.get(o.cid);s=c&&src?SP.fromImg('cr:'+o.cid+':'+src.length,src,c.size||(o.type==='cbuild'?3:1.2)):null;if(!s)return null;break}default:s=SP.PROPS[o.type]&&SP.PROPS[o.type]()}
   o._spr=s;o._sv=o.style;return s},
  drawActor(ctx,a,dt){const cam=this.cam;const q=cam.p(a.x,(a.gy||0)+(a.y||0),a.z);if(q.d<.5)return;const s=q.s;a.sx=q.x;a.sy=q.y;a.ss=s;
   OC.Rig.draw(ctx,a,q.x,q.y,s,dt)},
  /* ---------- 粒子 ---------- */
+ /* 小鳥：在地上跳、啄食；有夥伴靠近就飛走，過一陣子再回來 */
+ birds(ctx,dt){if(!this.perf.ambient||this.sc.kind==='room')return;const sc=this.sc;if(this._bsc!==sc.id){this._bsc=sc.id;this.bl=[];const n=sc.id==='beach'?4:3;for(let i=0;i<n;i++){const p=sc.randomPoint();this.bl.push({x:p.x,z:p.z,y:0,vy:0,vx:0,f:1,t:Math.random()*3,sea:sc.id==='beach',gone:0})}}
+  const cam=this.cam;for(const b of this.bl){b.t+=dt;if(b.gone>0){b.gone-=dt;b.y+=dt*2.2;b.x+=b.vx*dt;if(b.gone<=0){const p=sc.randomPoint();b.x=p.x;b.z=p.z;b.y=4;b.land=1}else{this.drawBird(ctx,b,true);continue}}
+   if(b.land){b.y=Math.max(0,b.y-dt*3);if(b.y<=0)b.land=0}
+   for(const a of this.actors){if(Math.hypot(a.x-b.x,a.z-b.z)<1.5&&!b.land){b.gone=6+Math.random()*6;b.vx=(b.x>a.x?1:-1)*U.rnd(1.5,3);break}}
+   if(!b.gone&&!b.land){if(b.t>1.4&&Math.random()<dt*1.2){b.t=0;b.vy=1.4;b.f=Math.random()<.5?1:-1;const nx=b.x+b.f*.25;if(sc.walk(nx,b.z))b.x=nx}if(b.vy||b.y>0){b.vy-=9*dt;b.y=Math.max(0,b.y+b.vy*dt);if(b.y===0)b.vy=0}}
+   this.drawBird(ctx,b,b.gone>0||b.land)}},
+ drawBird(ctx,b,fly){const q=this.cam.p(b.x,b.y,b.z);if(q.d<.5)return;const s=q.s*.13;ctx.save();ctx.translate(q.x,q.y);ctx.scale(b.vx<0||b.f<0?-1:1,1);
+  ctx.fillStyle='rgba(30,30,30,.15)';if(!fly){ctx.beginPath();ctx.ellipse(0,0,s*1.1,s*.35,0,0,6.3);ctx.fill()}
+  const body=b.sea?'#F7F7F2':'#B98E6A',wing=b.sea?'#C9D0D6':'#8C6648';const lift=fly?0:-s*.9-(Math.sin(b.t*20)>.6&&!fly?s*.2:0);ctx.translate(0,lift);
+  ctx.fillStyle=body;ctx.beginPath();ctx.ellipse(0,0,s*1.1,s*.75,0,0,6.3);ctx.fill();ctx.beginPath();ctx.arc(s*.9,-s*.55,s*.5,0,6.3);ctx.fill();
+  ctx.fillStyle='#F2B33A';ctx.beginPath();ctx.moveTo(s*1.35,-s*.6);ctx.lineTo(s*1.8,-s*.45);ctx.lineTo(s*1.35,-s*.35);ctx.fill();ctx.fillStyle='#2E2A2E';ctx.beginPath();ctx.arc(s*1.05,-s*.65,s*.1,0,6.3);ctx.fill();
+  ctx.fillStyle=wing;ctx.beginPath();if(fly){const fl=Math.sin(b.t*30)*s*1.2;ctx.moveTo(-s*.2,-s*.2);ctx.lineTo(-s*.9,-s*.4-fl);ctx.lineTo(s*.4,-s*.3);}else{ctx.ellipse(-s*.25,-s*.05,s*.65,s*.4,.3,0,6.3)}ctx.fill();ctx.restore()},
  drawFx(ctx){const cam=this.cam;for(const p of Fx.list){if(p.delay>0)continue;const q=cam.p(p.x,p.y,p.z);const a=1-p.t/p.life;const s=q.s*p.sz;
   if(p.k==='heart'){ctx.globalAlpha=Math.min(1,a*1.6);const k=s*(1+Math.sin(p.t*8)*.06);heart(ctx,q.x+Math.sin(p.t*4)*s*.4,q.y,k,'#F27C9B')}
   else if(p.k==='spark'){ctx.globalAlpha=a;ctx.fillStyle=p.col;star4(ctx,q.x,q.y,s*(.6+a*.4))}

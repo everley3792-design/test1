@@ -81,7 +81,7 @@ const UI={ic,COIN,sheets:[],blockWorld:false,placing:null,
    return`<button class="rd-b" data-k="${k}" style="--x:${Math.cos(an)*R|0}px;--y:${Math.sin(an)*R*.86|0}px;--d:${n*25}ms"><span>${ic(i,26)}</span><small>${t}</small></button>`}).join('')}</div>`);
   document.getElementById('app').appendChild(el);this.rd={el,a};this.placeRadial();requestAnimationFrame(()=>el.classList.add('open'));
   el.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;U.buzz(6);this.radialAct(a,b.dataset.k)}},
- placeRadial(){const r=this.rd;if(!r)return;const a=r.a;if(!a.ss)return;const x=a.sx,y=a.sy-a.ss*.75;const k=(x|0)+','+(y|0);if(r.k!==k){r.k=k;r.el.style.transform=`translate(${x|0}px,${y|0}px)`}},
+ placeRadial(){const r=this.rd;if(!r)return;const a=r.a;if(!a.ss)return;const W=innerWidth,R=140;const x=U.clamp(a.sx,R+12,W-R-12),y=U.clamp(a.sy-a.ss*.75,250,innerHeight-200);const k=(x|0)+','+(y|0);if(r.k!==k){r.k=k;r.el.style.transform=`translate(${x|0}px,${y|0}px)`}},
  closeFloating(keep){if(this.rd){const {el,a}=this.rd;this.rd=null;el.classList.remove('open');el.classList.add('out');setTimeout(()=>el.remove(),220);if(a.task&&a.task.def.id==='_menu'){a.task=null;a.lookAt=null}}
   if(keep!=='keepTray'&&OC.Bag)OC.Bag.closeTray();if(this.qsOpen&&keep!=='keepQS'&&keep!=='keepTray')this.toggleQS()},
  radialAct(a,k){const c=a.c;

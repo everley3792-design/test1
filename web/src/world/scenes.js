@@ -26,6 +26,8 @@ function home(){const rng=U.rng(4021);const sc=base('home',{cam:{tx:0,tz:.5,D:16
  const cliff=outline(-6,-7.3,5.6,2.3,9.1,64,.12,2.2);sc.cliffs.push({pts:cliff,h:1.4,col:'grass'});
  const cliff2=outline(7,-7.2,4,1.8,3.3,56,.14,2.4);sc.cliffs.push({pts:cliff2,h:.9,col:'grass'});
  sc.ponds.push({pts:outline(7.4,-.6,1.9,1.2,2.2,48,.12,2)});
+  [[6.8,-.9,0],[7.9,-.3,1],[7.2,0,2]].forEach(([x,z,v])=>sc.objs.push(S('lily',x,z,{r:0,flat:1,v,y:.02})));
+  [[5.6,-.2],[8.9,-.9],[6.5,-1.7]].forEach(([x,z],i)=>sc.objs.push(S('cattail',x,z,{r:0,deco:1,v:i})));
  /* 小徑 */
  sc.paths.push({pts:[[-1,-1.6],[-.6,0],[-1,1.8],[1.5,3],[4,3.6],[6.5,4.4]],w:1.1});
  sc.paths.push({pts:[[-1,1.8],[-4.5,2.6],[-7.5,2.4]],w:.9});
@@ -51,6 +53,8 @@ function home(){const rng=U.rng(4021);const sc=base('home',{cam:{tx:0,tz:.5,D:16
  /* 裝飾小花、草叢 */
  O.push(...scatter(rng,26,(r,i)=>{const p=[U.lerp(-11,11,r()),U.lerp(-4.5,7.8,r())];if(!inside(grass,...p))return null;return S('flowers',p[0],p[1],{cols:[['#F08FA5','#FFFFFF'],['#FFD36E','#F6F0E6'],['#B79CF0','#FFFFFF'],['#F2A65A','#FFD36E']][i%4],r:0,deco:1,v:i%6})}));
  O.push(...scatter(rng,60,(r,i)=>{const p=[U.lerp(-11.5,11.5,r()),U.lerp(-5,8.5,r())];if(!inside(grass,...p))return null;return S('tuft',p[0],p[1],{r:0,deco:1,v:i%5})}));
+ [[1.2,3.1],[3.6,3.7],[-3.2,2.5]].forEach(([x,z],i)=>O.push(S('stones',x,z,{r:0,flat:1,v:i})));
+  [[-2.6,-.6],[.6,-.6]].forEach(([x,z])=>O.push(S('lampost',x,z,{r:.15,light:2})));
  sc.spots={door:{x:-1,z:-1.6},stargaze:{x:1,z:5.6},sunset:{x:-1,z:7.4},view:{x:-9.6,z:3.6}};
  sc.houseDefault={x:-1,z:-2.6};
  sc.houseZone=(x,z)=>inside(grass,x,z)&&!inside(cliff,x,z)&&!inside(cliff2,x,z);
@@ -86,7 +90,7 @@ function beach(){const rng=U.rng(919);const sc=base('beach',{cam:{tx:0,tz:-.5,D:
  const O=sc.objs;
  O.push(S('pier',6.4,3.2,{r:0,flat:1}));O.push(S('pier',6.4,4.4,{r:0,flat:1}));O.push(S('pier',6.4,5.6,{r:0,flat:1,act:'fish',name:'碼頭'}));
  sc.pierZone=[[5.2,2],[7.6,2],[7.6,6.4],[5.2,6.4]];
- O.push(S('umbrella',-3.6,-.6,{r:.5}));O.push(S('mat',-3.2,0,{r:0,flat:1,act:'sunbathe',name:'沙灘墊'}));
+ O.push(S('boat',8.6,4.6,{r:0,flat:1}));O.push(S('umbrella',-3.6,-.6,{r:.5}));O.push(S('mat',-3.2,0,{r:0,flat:1,act:'sunbathe',name:'沙灘墊'}));
  [[-9.6,-3],[-6.6,-4.2],[9.8,-3.4],[2.4,-4.6],[-12,-1]].forEach(([x,z],i)=>O.push(S('tree',x,z,{kind:'palm',r:.4,v:i})));
  [[-7.6,1.4,.8],[10.6,.8,1.1],[0,-3.2,.6]].forEach(([x,z,s],i)=>O.push(S('rock',x,z,{size:s,r:.5*s,v:i})));
  O.push(S('log',3,-2,{r:.7,act:'bench',name:'漂流木',seat:1}));

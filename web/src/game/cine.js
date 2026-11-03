@@ -18,8 +18,8 @@ const Cine={on:false,t:0,ev:[],fx:{},lb:0,
  draw(ctx,W,H){if(!this.on)this.lb=Math.max(0,this.lb-.06);const lbv=this.lb;if(lbv<=0)return;const bar=H*.085*U.ease.out(lbv);ctx.fillStyle='rgba(28,22,26,.92)';ctx.fillRect(0,0,W,bar);ctx.fillRect(0,H-bar,W,bar);if(!this.on)return;
   const a=this.a,fx=this.fx,t=this.t;if(!a||!a.ss)return;const hx=a.sx,hy=a.sy-a.ss*1.25;
   /* 背景光芒（最愛＝粉色、喜歡＝金色、禮物＝彩虹） */
-  if(fx.rays){const k=Math.min(1,(t-fx.rays.t0)/.4),fade=fx.rays.until?Math.max(0,1-(t-fx.rays.until)/.4):1;if(k>0&&fade>0){ctx.save();ctx.translate(hx,a.sy-a.ss*.6);ctx.rotate(t*.35);ctx.globalAlpha=.32*k*fade;
-    for(let i=0;i<14;i++){ctx.rotate(Math.PI*2/14);ctx.fillStyle=i%2?fx.rays.c1:fx.rays.c2;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-W*.06,-H);ctx.lineTo(W*.06,-H);ctx.fill()}ctx.restore();ctx.globalAlpha=1}}
+  if(fx.rays){const k=Math.min(1,(t-fx.rays.t0)/.4),fade=fx.rays.until?Math.max(0,1-(t-fx.rays.until)/.4):1;if(k>0&&fade>0){ctx.save();ctx.translate(hx,a.sy-a.ss*.6);ctx.rotate(t*.35);ctx.globalAlpha=.13*k*fade;
+    for(let i=0;i<10;i++){ctx.rotate(Math.PI*2/10);ctx.fillStyle=i%2?fx.rays.c1:fx.rays.c2;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-W*.16,-H*.7);ctx.lineTo(W*.16,-H*.7);ctx.fill()}const gl=ctx.createRadialGradient(0,0,0,0,0,W*.5);gl.addColorStop(0,'rgba(255,255,255,.35)');gl.addColorStop(1,'rgba(255,255,255,0)');ctx.globalAlpha=k*fade;ctx.fillStyle=gl;ctx.beginPath();ctx.arc(0,0,W*.5,0,Math.PI*2);ctx.fill();ctx.restore();ctx.globalAlpha=1}}
   /* 憂鬱線條（討厭的東西） */
   if(fx.gloom){ctx.save();ctx.globalAlpha=.55*Math.min(1,(t-fx.gloom)/.3);ctx.strokeStyle='#7F8EB2';ctx.lineWidth=2.4;for(let i=0;i<7;i++){const x=hx-a.ss*.5+i*a.ss*.16;ctx.beginPath();ctx.moveTo(x,hy-a.ss*.35);ctx.lineTo(x,hy+a.ss*.05+Math.sin(t*3+i)*4);ctx.stroke()}ctx.restore()}
   /* 物品登場：上方彈出＋光環，之後落入手中 */
